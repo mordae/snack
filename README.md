@@ -5,6 +5,7 @@
 - Simple. Feel free to contribute.
 - Fast. Faster then Attoparsec.
 - ASCII. Good enough for IETF formats.
+- Also Text. But quite slower.
 
 Example:
 

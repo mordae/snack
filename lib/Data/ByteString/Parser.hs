@@ -49,6 +49,9 @@ module Data.ByteString.Parser
   , atEnd
 
     -- * Miscelaneous
+    -- |
+    -- These are all generic methods, but since I sometimes forget about them,
+    -- it is nice to have them listed here for reference what writing parsers.
   , Control.Applicative.empty
   , pure
   , guard
@@ -120,21 +123,40 @@ where
     fail _ = mzero
 
 
+  -- |
+  -- Discards the remaining input and returns just the parse result.
+  -- You might want to combine it with 'endOfInput' for the best effect.
+  --
+  -- Example:
+  --
+  -- @
+  -- parseOnly (pContacts \<* endOfInput) bstr
+  -- @
+  --
   {-# INLINE CONLIKE parseOnly #-}
   parseOnly :: Parser a -> ByteString -> Maybe a
   parseOnly par = \inp -> fst <$> runParser par inp
 
 
+  -- |
+  -- Accepts a single, matching byte.
+  --
   {-# INLINE CONLIKE byte #-}
   byte :: Word8 -> Parser Word8
   byte c = satisfy (c ==)
 
 
+  -- |
+  -- Accepts a single, differing byte.
+  --
   {-# INLINE CONLIKE notByte #-}
   notByte :: Word8 -> Parser Word8
   notByte c = satisfy (c /=)
 
 
+  -- |
+  -- Accepts a single byte.
+  --
   {-# INLINE anyByte #-}
   anyByte :: Parser Word8
   anyByte = Parser \inp ->
@@ -143,6 +165,9 @@ where
        else Just (unsafeHead inp, unsafeTail inp)
 
 
+  -- |
+  -- Accepts a single byte matching the predicate.
+  --
   {-# INLINE CONLIKE satisfy #-}
   satisfy :: (Word8 -> Bool) -> Parser Word8
   satisfy isOk = Parser \inp ->
@@ -154,6 +179,12 @@ where
                    else Nothing
 
 
+  -- |
+  -- Peeks ahead, but does not consume.
+  --
+  -- Be careful, peeking behind end of the input fails.
+  -- You might want to check using 'atEnd' beforehand.
+  --
   {-# INLINE peekByte #-}
   peekByte :: Parser Word8
   peekByte = Parser \inp ->
@@ -162,6 +193,9 @@ where
        else Just (unsafeHead inp, inp)
 
 
+  -- |
+  -- Accepts a matching string.
+  --
   {-# INLINE CONLIKE string #-}
   string :: ByteString -> Parser ByteString
   string str = Parser \inp ->
@@ -171,6 +205,10 @@ where
           False -> Nothing
 
 
+  -- |
+  -- Accepts given number of bytes.
+  -- Fails when not enough bytes are available.
+  --
   {-# INLINE CONLIKE take #-}
   take :: Int -> Parser ByteString
   take n = Parser \inp ->
@@ -179,11 +217,18 @@ where
        else Just (splitAt n inp)
 
 
+  -- |
+  -- Scans ahead statefully and then accepts whatever bytes the scanner liked.
+  -- Scanner returns 'Nothing' to mark end of the acceptable extent.
+  --
   {-# INLINE CONLIKE scan #-}
   scan :: s -> (s -> Word8 -> Maybe s) -> Parser ByteString
   scan state scanner = fst <$> runScanner state scanner
 
 
+  -- |
+  -- Like 'scan', but also returns the final scanner state.
+  --
   {-# INLINE CONLIKE runScanner #-}
   runScanner :: s -> (s -> Word8 -> Maybe s) -> Parser (ByteString, s)
   runScanner state scanner = Parser \inp ->
@@ -201,17 +246,28 @@ where
       Nothing -> (state, n)
 
 
+  -- |
+  -- Efficiently consume as long as the input bytes match the predicate.
+  -- An inverse of 'takeTill'.
+  --
   {-# INLINE CONLIKE takeWhile #-}
   takeWhile :: (Word8 -> Bool) -> Parser ByteString
   takeWhile test = takeTill (not . test)
 
 
+  -- |
+  -- Like 'Data.ByteString.Parser.takeWhile', but requires at least a single byte.
+  --
   {-# INLINE CONLIKE takeWhile1 #-}
   takeWhile1 :: (Word8 -> Bool) -> Parser ByteString
   takeWhile1 test = provided (not . null) $
                     Data.ByteString.Parser.takeWhile test
 
 
+  -- |
+  -- Efficiently consume until a byte matching the predicate is found.
+  -- An inverse of 'Data.ByteString.Parser.takeWhile'.
+  --
   {-# INLINE CONLIKE takeTill #-}
   takeTill :: (Word8 -> Bool) -> Parser ByteString
   takeTill test = Parser \inp ->
@@ -219,12 +275,19 @@ where
      in Just (splitAt n inp)
 
 
+  -- |
+  -- Same as 'takeTill', but requires at least a single byte.
+  --
   {-# INLINE CONLIKE takeTill1 #-}
   takeTill1 :: (Word8 -> Bool) -> Parser ByteString
   takeTill1 test = provided (not . null) $
                     Data.ByteString.Parser.takeTill test
 
 
+  -- |
+  -- Makes the parser not only return the result, but also the original
+  -- matched extent.
+  --
   {-# INLINE CONLIKE match #-}
   match :: Parser a -> Parser (ByteString, a)
   match par = Parser \inp ->
@@ -235,11 +298,17 @@ where
          in Just ((BS.take n inp, x), more)
 
 
+  -- |
+  -- Accept whatever input remains.
+  --
   {-# INLINE takeByteString #-}
   takeByteString :: Parser ByteString
   takeByteString = Parser \inp -> Just (inp, mempty)
 
 
+  -- |
+  -- Accepts end of input and fails if we are not there yet.
+  --
   {-# INLINE endOfInput #-}
   endOfInput :: Parser ()
   endOfInput = Parser \case
@@ -247,6 +316,9 @@ where
     _otherwise      -> Nothing
 
 
+  -- |
+  -- Returns whether we are at the end of the input yet.
+  --
   {-# INLINE atEnd #-}
   atEnd :: Parser Bool
   atEnd = Parser \inp -> Just (null inp, inp)

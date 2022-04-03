@@ -62,6 +62,9 @@ module Data.Text.Parser
   , atEnd
 
     -- * Miscelaneous
+    -- |
+    -- These are all generic methods, but since I sometimes forget about them,
+    -- it is nice to have them listed here for reference what writing parsers.
   , Control.Applicative.empty
   , pure
   , guard
