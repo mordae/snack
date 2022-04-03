@@ -19,19 +19,24 @@ where
   import Data.Either
   import Data.Maybe
 
+  import Data.Text (Text)
   import Data.ByteString (ByteString)
 
   import Criterion.Main
 
   import qualified Data.ByteString.Parser.Char8 as SC
   import qualified Data.Attoparsec.ByteString.Char8 as AC
+  import qualified Data.Text.Parser as ST
+  import qualified Data.Attoparsec.Text as AT
 
 
   main :: IO ()
   main = defaultMain
     [ bgroup "media"
-        [ bench "snack"      $ nf scMedia (cs $! sampleMedia)
-        , bench "attoparsec" $ nf acMedia (cs $! sampleMedia)
+        [ bench "Data.ByteString.Parser.Char8" $ nf scMedia (cs $! sampleMedia)
+        , bench "Data.Attoparsec.ByteString"   $ nf acMedia (cs $! sampleMedia)
+        , bench "Data.Text.Parser"             $ nf stMedia (cs $! sampleMedia)
+        , bench "Data.Attoparsec.Text"         $ nf atMedia (cs $! sampleMedia)
         ]
     ]
 
@@ -98,7 +103,6 @@ where
       isStrChar c = c /= '\\' && c /= '"'
 
       isSpecial :: (Char -> Bool)
-      --isSpecial = SC.inClass "\x00- ()<>@,;:\\\"/[]?="
       isSpecial c = c <= ' '
                  || c == '(' || c == ')'
                  || c == '<' || c == '>'
@@ -160,6 +164,137 @@ where
 
       pQuoted :: AC.Parser a -> AC.Parser a
       pQuoted p = AC.char '"' *> p <* AC.char '"'
+
+      isStrChar :: (Char -> Bool)
+      isStrChar c = c /= '\\' && c /= '"'
+
+      isSpecial :: (Char -> Bool)
+      isSpecial c = c <= ' '
+                 || c == '(' || c == ')'
+                 || c == '<' || c == '>'
+                 || c == '@' || c == ',' || c == ';'
+                 || c == ':' || c == '\\'
+                 || c == '"' || c == '/'
+                 || c == '[' || c == ']'
+                 || c == '?' || c == '='
+
+
+  {-# NOINLINE stMedia #-}
+  stMedia :: Text -> Maybe [Media Text]
+  stMedia = ST.parseOnly (pMediaList <* ST.endOfInput)
+    where
+      pMedia :: ST.Parser (Media Text)
+      pMediaList = pMedia `ST.sepBy` pSeparator
+      pMedia = do
+        mainType <- pToken
+        subType  <- (ST.char '/' *> pToken) <|> pure ""
+
+        (qs, params) <- partitionEithers <$> ST.many (ST.eitherP pQuality pParameter)
+
+        let quality = fromMaybe 1.0 . listToMaybe $ qs
+
+        return (mainType, subType, params, quality)
+
+      pParameter :: ST.Parser (Text, Text)
+      pParameter = do
+        _     <- ST.takeWhile ST.isSpace
+        _     <- ST.char ';'
+        name  <- pToken
+        _     <- ST.char '='
+        value <- pValue
+        return (name, value)
+
+      pQuality :: ST.Parser Float
+      pQuality = do
+        _ <- ST.takeWhile ST.isSpace
+        _ <- ST.char ';'
+        _ <- pSpaced $ ST.char 'q'
+        _ <- ST.char '='
+        ST.fractional
+
+      pToken :: ST.Parser Text
+      pToken = pSpaced $ ST.takeTill1 isSpecial
+
+      pSeparator :: ST.Parser Char
+      pSeparator = pSpaced $ ST.char ','
+
+      pValue :: ST.Parser Text
+      pValue = pToken <|> pQuotedStr
+
+      pQuotedStr :: ST.Parser Text
+      pQuotedStr = pSpaced $ pQuoted $ ST.takeWhile isStrChar
+
+      pSpaced :: ST.Parser a -> ST.Parser a
+      pSpaced p = p `ST.wrap` ST.takeWhile ST.isSpace
+
+      pQuoted :: ST.Parser a -> ST.Parser a
+      pQuoted p = ST.char '"' *> p <* ST.char '"'
+
+      isStrChar :: (Char -> Bool)
+      isStrChar c = c /= '\\' && c /= '"'
+
+      isSpecial :: (Char -> Bool)
+      isSpecial c = c <= ' '
+                 || c == '(' || c == ')'
+                 || c == '<' || c == '>'
+                 || c == '@' || c == ',' || c == ';'
+                 || c == ':' || c == '\\'
+                 || c == '"' || c == '/'
+                 || c == '[' || c == ']'
+                 || c == '?' || c == '='
+
+
+
+  {-# NOINLINE atMedia #-}
+  atMedia :: Text -> Either String [Media Text]
+  atMedia = AT.parseOnly (pMediaList <* AT.endOfInput)
+    where
+      pMedia :: AT.Parser (Media Text)
+      pMediaList = pMedia `AT.sepBy` pSeparator
+      pMedia = do
+        mainType <- pToken
+        subType  <- (AT.char '/' *> pToken) <|> pure ""
+
+        (qs, params) <- partitionEithers <$> AT.many' (AT.eitherP pQuality pParameter)
+
+        let quality = fromMaybe 1.0 . listToMaybe $ qs
+
+        return (mainType, subType, params, quality)
+
+      pParameter :: AT.Parser (Text, Text)
+      pParameter = do
+        _     <- AT.skipSpace
+        _     <- AT.char ';'
+        name  <- pToken
+        _     <- AT.char '='
+        value <- pValue
+        return (name, value)
+
+      pQuality :: AT.Parser Float
+      pQuality = do
+        _ <- AT.skipSpace
+        _ <- AT.char ';'
+        _ <- pSpaced $ AT.char 'q'
+        _ <- AT.char '='
+        AT.rational
+
+      pToken :: AT.Parser Text
+      pToken = pSpaced $ AT.takeTill isSpecial
+
+      pSeparator :: AT.Parser Char
+      pSeparator = pSpaced $ AT.char ','
+
+      pValue :: AT.Parser Text
+      pValue = pToken <|> pQuotedStr
+
+      pQuotedStr :: AT.Parser Text
+      pQuotedStr = pSpaced $ pQuoted $ AT.takeWhile isStrChar
+
+      pSpaced :: AT.Parser a -> AT.Parser a
+      pSpaced p = AT.skipSpace *> p <* AT.skipSpace
+
+      pQuoted :: AT.Parser a -> AT.Parser a
+      pQuoted p = AT.char '"' *> p <* AT.char '"'
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'

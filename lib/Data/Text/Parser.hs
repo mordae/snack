@@ -1,5 +1,5 @@
 -- |
--- Module      :  Data.ByteString.Parser
+-- Module      :  Data.Text.Parser
 -- License     :  CC0-1.0
 --
 -- Maintainer  :  mordae@anilinux.org
@@ -7,26 +7,39 @@
 -- Portability :  non-portable (ghc)
 --
 
-module Data.ByteString.Parser
+module Data.Text.Parser
   ( Parser(..)
   , parseOnly
 
-    -- * Bytes
-  , byte
-  , notByte
-  , anyByte
+    -- * Characters
+  , char
+  , notChar
+  , anyChar
   , satisfy
-  , peekByte
+  , space
+  , isSpace
+  , skipSpace
+  , peekChar
 
     -- * Strings
   , string
-  , Data.ByteString.Parser.take
+  , stringCI
+  , Data.Text.Parser.take
   , scan
   , runScanner
-  , Data.ByteString.Parser.takeWhile
+  , inClass
+  , notInClass
+  , Data.Text.Parser.takeWhile
   , takeWhile1
   , takeTill
   , takeTill1
+
+    -- * Numbers
+  , signed
+  , decimal
+  , hexadecimal
+  , octal
+  , fractional
 
     -- * Combinators
   , provided
@@ -44,7 +57,7 @@ module Data.ByteString.Parser
   , match
 
     -- * End Of Input
-  , takeByteString
+  , takeText
   , endOfInput
   , atEnd
 
@@ -62,18 +75,23 @@ where
   import Control.Applicative
   import Control.Monad
 
+  import Data.Char
   import Data.Maybe
-  import Data.Word
 
-  import Data.ByteString as BS
-  import Data.ByteString.Unsafe as BS
+  import Data.Text as T
+  import Data.Text.Unsafe as T
+  import Data.Text.Encoding as T
+
+  import qualified Data.ByteString as BS
+  import qualified Data.ByteString.Parser.Char8 as BSP
+  import qualified Data.CaseInsensitive as CI
 
   import Snack.Combinators
 
 
   newtype Parser a =
     Parser
-      { runParser :: ByteString -> Maybe (a, ByteString)
+      { runParser :: Text -> Maybe (a, Text)
       }
 
   instance Functor Parser where
@@ -121,30 +139,12 @@ where
 
 
   {-# INLINE CONLIKE parseOnly #-}
-  parseOnly :: Parser a -> ByteString -> Maybe a
+  parseOnly :: Parser a -> Text -> Maybe a
   parseOnly par = \inp -> fst <$> runParser par inp
 
 
-  {-# INLINE CONLIKE byte #-}
-  byte :: Word8 -> Parser Word8
-  byte c = satisfy (c ==)
-
-
-  {-# INLINE CONLIKE notByte #-}
-  notByte :: Word8 -> Parser Word8
-  notByte c = satisfy (c /=)
-
-
-  {-# INLINE anyByte #-}
-  anyByte :: Parser Word8
-  anyByte = Parser \inp ->
-    if null inp
-       then Nothing
-       else Just (unsafeHead inp, unsafeTail inp)
-
-
   {-# INLINE CONLIKE satisfy #-}
-  satisfy :: (Word8 -> Bool) -> Parser Word8
+  satisfy :: (Char -> Bool) -> Parser Char
   satisfy isOk = Parser \inp ->
     if null inp
        then Nothing
@@ -154,16 +154,8 @@ where
                    else Nothing
 
 
-  {-# INLINE peekByte #-}
-  peekByte :: Parser Word8
-  peekByte = Parser \inp ->
-    if null inp
-       then Nothing
-       else Just (unsafeHead inp, inp)
-
-
   {-# INLINE CONLIKE string #-}
-  string :: ByteString -> Parser ByteString
+  string :: Text -> Parser Text
   string str = Parser \inp ->
     let (pfx, sfx) = splitAt (length str) inp
      in case pfx == str of
@@ -172,7 +164,7 @@ where
 
 
   {-# INLINE CONLIKE take #-}
-  take :: Int -> Parser ByteString
+  take :: Int -> Parser Text
   take n = Parser \inp ->
     if n > length inp
        then Nothing
@@ -180,12 +172,12 @@ where
 
 
   {-# INLINE CONLIKE scan #-}
-  scan :: s -> (s -> Word8 -> Maybe s) -> Parser ByteString
+  scan :: s -> (s -> Char -> Maybe s) -> Parser Text
   scan state scanner = fst <$> runScanner state scanner
 
 
   {-# INLINE CONLIKE runScanner #-}
-  runScanner :: s -> (s -> Word8 -> Maybe s) -> Parser (ByteString, s)
+  runScanner :: s -> (s -> Char -> Maybe s) -> Parser (Text, s)
   runScanner state scanner = Parser \inp ->
     let (state', n) = scanBytes state scanner 0 (unpack inp)
         (res, more) = splitAt n inp
@@ -193,7 +185,7 @@ where
 
 
   {-# INLINE scanBytes #-}
-  scanBytes :: s -> (s -> Word8 -> Maybe s) -> Int -> [Word8] -> (s, Int)
+  scanBytes :: s -> (s -> Char -> Maybe s) -> Int -> [Char] -> (s, Int)
   scanBytes !state _scanner !n [] = (state, n)
   scanBytes !state scanner !n (x:more) =
     case scanner state x of
@@ -202,42 +194,42 @@ where
 
 
   {-# INLINE CONLIKE takeWhile #-}
-  takeWhile :: (Word8 -> Bool) -> Parser ByteString
+  takeWhile :: (Char -> Bool) -> Parser Text
   takeWhile test = takeTill (not . test)
 
 
   {-# INLINE CONLIKE takeWhile1 #-}
-  takeWhile1 :: (Word8 -> Bool) -> Parser ByteString
+  takeWhile1 :: (Char -> Bool) -> Parser Text
   takeWhile1 test = provided (not . null) $
-                    Data.ByteString.Parser.takeWhile test
+                    Data.Text.Parser.takeWhile test
 
 
   {-# INLINE CONLIKE takeTill #-}
-  takeTill :: (Word8 -> Bool) -> Parser ByteString
+  takeTill :: (Char -> Bool) -> Parser Text
   takeTill test = Parser \inp ->
     let n = fromMaybe (length inp) $ findIndex test inp
      in Just (splitAt n inp)
 
 
   {-# INLINE CONLIKE takeTill1 #-}
-  takeTill1 :: (Word8 -> Bool) -> Parser ByteString
+  takeTill1 :: (Char -> Bool) -> Parser Text
   takeTill1 test = provided (not . null) $
-                    Data.ByteString.Parser.takeTill test
+                    Data.Text.Parser.takeTill test
 
 
   {-# INLINE CONLIKE match #-}
-  match :: Parser a -> Parser (ByteString, a)
+  match :: Parser a -> Parser (Text, a)
   match par = Parser \inp ->
     case runParser par inp of
       Nothing -> Nothing
       Just (x, more) ->
         let n = length more
-         in Just ((BS.take n inp, x), more)
+         in Just ((T.take n inp, x), more)
 
 
-  {-# INLINE takeByteString #-}
-  takeByteString :: Parser ByteString
-  takeByteString = Parser \inp -> Just (inp, mempty)
+  {-# INLINE takeText #-}
+  takeText :: Parser Text
+  takeText = Parser \inp -> Just (inp, mempty)
 
 
   {-# INLINE endOfInput #-}
@@ -250,6 +242,103 @@ where
   {-# INLINE atEnd #-}
   atEnd :: Parser Bool
   atEnd = Parser \inp -> Just (null inp, inp)
+
+
+  {-# INLINE CONLIKE char #-}
+  char :: Char -> Parser Char
+  char c = satisfy (c ==)
+
+
+  {-# INLINE space #-}
+  space :: Parser Char
+  space = satisfy isSpace
+
+
+  {-# INLINE skipSpace #-}
+  skipSpace :: Parser ()
+  skipSpace = void $ Data.Text.Parser.takeWhile isSpace
+
+
+  {-# INLINE CONLIKE notChar #-}
+  notChar :: Char -> Parser Char
+  notChar c = satisfy (c /=)
+
+
+  {-# INLINE anyChar #-}
+  anyChar :: Parser Char
+  anyChar = Parser \inp ->
+    if null inp
+       then Nothing
+       else Just (unsafeHead inp, unsafeTail inp)
+
+
+  {-# INLINE peekChar #-}
+  peekChar :: Parser Char
+  peekChar = Parser \inp ->
+    if null inp
+       then Nothing
+       else Just (unsafeHead inp, inp)
+
+
+  {-# INLINE CONLIKE stringCI #-}
+  stringCI :: Text -> Parser Text
+  stringCI str = Parser \inp ->
+    let (pfx, sfx) = splitAt (length str) inp
+     in case CI.mk pfx == CI.mk str of
+          True -> Just (pfx, sfx)
+          False -> Nothing
+
+
+  {-# INLINE CONLIKE inClass #-}
+  inClass :: [Char] -> Char -> Bool
+  inClass (x:'-':y:rest)  = \c -> (x <= c && c <= y) || inClass rest c
+  inClass (x:rest)        = \c -> (x == c) || inClass rest c
+  inClass []              = \_ -> False
+
+
+  {-# INLINE CONLIKE notInClass #-}
+  notInClass :: [Char] -> Char -> Bool
+  notInClass (x:'-':y:rest) = \c -> (x > c || c > y) || notInClass rest c
+  notInClass (x:rest)       = \c -> (x /= c) || notInClass rest c
+  notInClass []             = \_ -> False
+
+
+  {-# INLINE signed #-}
+  signed :: (Num a) => Parser a -> Parser a
+  signed runNumber = (char '-' *> fmap negate runNumber)
+                 <|> (char '+' *> runNumber)
+                 <|> (runNumber)
+
+
+  {-# INLINE CONLIKE withUtf8 #-}
+  withUtf8 :: BSP.Parser a -> Parser a
+  withUtf8 bspar = Parser \inp ->
+    let bstr = encodeUtf8 inp
+     in case BSP.runParser bspar bstr of
+          Nothing -> Nothing
+          Just (x, more) ->
+            let n = lengthWord8 inp - BS.length more
+             in Just (x, dropWord8 n inp)
+
+
+  {-# INLINE decimal #-}
+  decimal :: (Integral a) => Parser a
+  decimal = withUtf8 BSP.decimal
+
+
+  {-# INLINE hexadecimal #-}
+  hexadecimal :: (Integral a) => Parser a
+  hexadecimal = withUtf8 BSP.hexadecimal
+
+
+  {-# INLINE octal #-}
+  octal :: (Integral a) => Parser a
+  octal = withUtf8 BSP.octal
+
+
+  {-# INLINE fractional #-}
+  fractional :: (Fractional a) => Parser a
+  fractional = withUtf8 BSP.fractional
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

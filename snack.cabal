@@ -22,8 +22,10 @@ library
     exposed-modules:
         Data.ByteString.Parser
         Data.ByteString.Parser.Char8
+        Data.Text.Parser
 
     hs-source-dirs:     lib
+    other-modules:      Snack.Combinators
     default-language:   GHC2021
     default-extensions: BlockArguments LambdaCase
     ghc-options:
@@ -34,7 +36,8 @@ library
         base >=4.13 && <5,
         bytestring >=0.11,
         bytestring-lexing >=0.5,
-        case-insensitive >=1.2
+        case-insensitive >=1.2,
+        text >=2.0
 
 benchmark bench
     type:               exitcode-stdio-1.0
@@ -53,4 +56,4 @@ benchmark bench
         criterion,
         snack,
         string-conversions,
-        text >=1.2
+        text >=2.0
