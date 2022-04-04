@@ -38,6 +38,10 @@ where
         , bench "Data.Text.Parser"             $ nf stMedia (cs $! sampleMedia)
         , bench "Data.Attoparsec.Text"         $ nf atMedia (cs $! sampleMedia)
         ]
+    , bgroup "scan"
+        [ bench "Data.ByteString.Parser.Char8" $ nf scKeyValue (cs $! sampleKeyValue)
+        , bench "Data.Attoparsec.ByteString"   $ nf acKeyValue (cs $! sampleKeyValue)
+        ]
     ]
 
 
@@ -46,6 +50,10 @@ where
 
   sampleMedia :: String
   sampleMedia = "text/html, text/plain;q=0.7"
+
+
+  sampleKeyValue :: String
+  sampleKeyValue = "lst = \"\\\"first\\\", \\\"second\\\", \\\"third\\\"\""
 
 
   {-# NOINLINE scMedia #-}
@@ -308,6 +316,44 @@ where
                  || c == '"' || c == '/'
                  || c == '[' || c == ']'
                  || c == '?' || c == '='
+
+
+  scKeyValue :: ByteString -> Maybe (ByteString, ByteString)
+  scKeyValue = SC.parseOnly (pKeyValue <* SC.endOfInput)
+    where
+      pKeyValue = do
+        _   <- SC.skipSpace
+        key <- SC.takeWhile1 (SC.inClass "A-Za-z0-9_-")
+        _   <- SC.skipSpace
+        _   <- SC.skipSpace
+        '=' <- SC.char '='
+        _   <- SC.skipSpace
+        _   <- SC.char '"'
+        val <- SC.scan False scanString
+        _   <- SC.char '"'
+        return (key, val)
+
+
+  acKeyValue :: ByteString -> Either String (ByteString, ByteString)
+  acKeyValue = AC.parseOnly (pKeyValue <* AC.endOfInput)
+    where
+      pKeyValue = do
+        _   <- AC.skipSpace
+        key <- AC.takeWhile1 (AC.inClass "A-Za-z0-9_-")
+        _   <- AC.skipSpace
+        '=' <- AC.char '='
+        _   <- AC.skipSpace
+        _   <- AC.char '"'
+        val <- AC.scan False scanString
+        _   <- AC.char '"'
+        return (key, val)
+
+
+  scanString :: Bool -> Char -> Maybe Bool
+  scanString True _     = Just False
+  scanString False '"'  = Nothing
+  scanString False '\\' = Just True
+  scanString False _    = Just False
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
