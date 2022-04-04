@@ -87,7 +87,6 @@ where
 
   import qualified Data.ByteString as BS
   import qualified Data.ByteString.Parser.Char8 as BSP
-  import qualified Data.CaseInsensitive as CI
 
   import Snack.Combinators
 
@@ -287,7 +286,7 @@ where
   stringCI :: Text -> Parser Text
   stringCI str = Parser \inp ->
     let (pfx, sfx) = splitAt (length str) inp
-     in case CI.mk pfx == CI.mk str of
+     in case toCaseFold pfx == toCaseFold str of
           True -> Just (pfx, sfx)
           False -> Nothing
 

@@ -92,7 +92,6 @@ where
 
   import qualified Data.ByteString.Lex.Fractional as LF
   import qualified Data.ByteString.Lex.Integral as LI
-  import qualified Data.CaseInsensitive as CI
 
 
   {-# INLINE CONLIKE char #-}
@@ -151,10 +150,19 @@ where
   stringCI :: ByteString -> Parser ByteString
   stringCI str = Parser \inp ->
     let (pfx, sfx) = splitAt (length str) inp
-     in case CI.mk pfx == CI.mk str of
+     in case toCaseFold pfx == toCaseFold str of
           True -> Just (pfx, sfx)
           False -> Nothing
 
+
+  -- |
+  -- Perform simple ASCII case folding.
+  --
+  {-# INLINE toCaseFold #-}
+  toCaseFold :: ByteString -> ByteString
+  toCaseFold = BS.map foldCase
+    where foldCase w | 65 <= w && w <= 90 = w + 32
+          foldCase w = w
 
   {-# INLINE CONLIKE take #-}
   take :: Int -> Parser ByteString
