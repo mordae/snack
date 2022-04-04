@@ -312,9 +312,9 @@ where
                  <|> (runNumber)
 
 
-  {-# INLINE CONLIKE withUtf8 #-}
-  withUtf8 :: BSP.Parser a -> Parser a
-  withUtf8 bspar = Parser \inp ->
+  {-# INLINE CONLIKE unsafeWithUtf8 #-}
+  unsafeWithUtf8 :: BSP.Parser a -> Parser a
+  unsafeWithUtf8 bspar = Parser \inp ->
     let bstr = encodeUtf8 inp
      in case BSP.runParser bspar bstr of
           Nothing -> Nothing
@@ -325,22 +325,22 @@ where
 
   {-# INLINE decimal #-}
   decimal :: (Integral a) => Parser a
-  decimal = withUtf8 BSP.decimal
+  decimal = unsafeWithUtf8 BSP.decimal
 
 
   {-# INLINE hexadecimal #-}
   hexadecimal :: (Integral a) => Parser a
-  hexadecimal = withUtf8 BSP.hexadecimal
+  hexadecimal = unsafeWithUtf8 BSP.hexadecimal
 
 
   {-# INLINE octal #-}
   octal :: (Integral a) => Parser a
-  octal = withUtf8 BSP.octal
+  octal = unsafeWithUtf8 BSP.octal
 
 
   {-# INLINE fractional #-}
   fractional :: (Fractional a) => Parser a
-  fractional = withUtf8 BSP.fractional
+  fractional = unsafeWithUtf8 BSP.fractional
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
