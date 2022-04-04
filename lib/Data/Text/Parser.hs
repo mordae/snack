@@ -6,6 +6,8 @@
 -- Stability   :  unstable
 -- Portability :  non-portable (ghc)
 --
+-- This module provides a parser for Unicode 'Text'.
+--
 
 module Data.Text.Parser
   ( Parser(..)

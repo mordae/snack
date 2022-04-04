@@ -6,6 +6,16 @@
 -- Stability   :  unstable
 -- Portability :  non-portable (ghc)
 --
+-- This module provides a parser for 'ByteString'.
+--
+--   * If you\'d like to parse ASCII text, you might want to take a look at
+--     "Data.ByteString.Parser.Char8". It reuses the same 'Parser', but
+--     provides functions working with 'Char' instead of 'Word8' as well as
+--     more string utilities.
+--
+--   * If you\'d like to parse Unicode text, look instead at the
+--     "Data.Text.Parser". Is is slower, but in a way more correct.
+--
 
 module Data.ByteString.Parser
   ( Parser(..)

@@ -6,6 +6,8 @@
 -- Stability   :  unstable
 -- Portability :  non-portable (ghc)
 --
+-- This module provides a parser for ASCII 'ByteString'.
+--
 
 module Data.ByteString.Parser.Char8
   ( Parser(..)
@@ -94,16 +96,25 @@ where
   import qualified Data.ByteString.Lex.Integral as LI
 
 
+  -- |
+  -- Accepts a single, matching ASCII character.
+  --
   {-# INLINE CONLIKE char #-}
   char :: Char -> Parser Char
   char c = satisfy (c ==)
 
 
+  -- |
+  -- Accepts a single, differing ASCII character.
+  --
   {-# INLINE CONLIKE notChar #-}
   notChar :: Char -> Parser Char
   notChar c = satisfy (c /=)
 
 
+  -- |
+  -- Accepts a single character.
+  --
   {-# INLINE anyChar #-}
   anyChar :: Parser Char
   anyChar = Parser \inp ->
@@ -112,6 +123,9 @@ where
        else Just (w2c (unsafeHead inp), unsafeTail inp)
 
 
+  -- |
+  -- Accepts a single character matching the predicate.
+  --
   {-# INLINE CONLIKE satisfy #-}
   satisfy :: (Char -> Bool) -> Parser Char
   satisfy isOk = Parser \inp ->
@@ -123,21 +137,41 @@ where
                    else Nothing
 
 
+  -- |
+  -- Accepts a single ASCII white space character.
+  -- See 'isSpace' for details.
+  --
   {-# INLINE space #-}
   space :: Parser Char
   space = satisfy isSpace
 
 
+  -- |
+  -- Accepts multiple ASCII white space characters.
+  -- See 'isSpace' for details.
+  --
   {-# INLINE skipSpace #-}
   skipSpace :: Parser ()
   skipSpace = void $ Data.ByteString.Parser.Char8.takeWhile isSpace
 
 
+  -- |
+  -- True for any of the @[' ', '\\t', '\\n', '\\v', '\\f', '\\r']@ characters.
+  --
+  -- Please note that "Data.Text.Parser" re-exports 'Data.Char.isString', that
+  -- considers more unicode codepoints, making it significantly slower.
+  --
   {-# INLINE isSpace #-}
   isSpace :: Char -> Bool
   isSpace c = (c == ' ') || ('\t' <= c && c <= '\r')
 
 
+  -- |
+  -- Peeks ahead, but does not consume.
+  --
+  -- Be careful, peeking behind end of the input fails.
+  -- You might want to check using 'atEnd' beforehand.
+  --
   {-# INLINE peekChar #-}
   peekChar :: Parser Char
   peekChar = Parser \inp ->
@@ -146,6 +180,10 @@ where
        else Just (w2c (unsafeHead inp), inp)
 
 
+  -- |
+  -- Accepts a matching string.
+  -- Matching is performed in a case-insensitive manner under ASCII.
+  --
   {-# INLINE CONLIKE stringCI #-}
   stringCI :: ByteString -> Parser ByteString
   stringCI str = Parser \inp ->
@@ -164,6 +202,11 @@ where
     where foldCase w | 65 <= w && w <= 90 = w + 32
           foldCase w = w
 
+
+  -- |
+  -- Accepts given number of characters.
+  -- Fails when not enough characters are available.
+  --
   {-# INLINE CONLIKE take #-}
   take :: Int -> Parser ByteString
   take n = Parser \inp ->
@@ -172,11 +215,18 @@ where
        else Just (splitAt n inp)
 
 
+  -- |
+  -- Scans ahead statefully and then accepts whatever bytes the scanner liked.
+  -- Scanner returns 'Nothing' to mark end of the acceptable extent.
+  --
   {-# INLINE CONLIKE scan #-}
   scan :: s -> (s -> Char -> Maybe s) -> Parser ByteString
   scan state scanner = fst <$> runScanner state scanner
 
 
+  -- |
+  -- Like 'scan', but also returns the final scanner state.
+  --
   {-# INLINE CONLIKE runScanner #-}
   runScanner :: s -> (s -> Char -> Maybe s) -> Parser (ByteString, s)
   runScanner state scanner = Parser \inp ->
@@ -194,6 +244,17 @@ where
       Nothing -> (state, n)
 
 
+  -- |
+  -- Determine whether is the character member of the class specified
+  -- like @\"A-Za-z0-9_-\"@. If you want to include @\'-\'@, put it either
+  -- first or last.
+  --
+  -- Example:
+  --
+  -- @
+  -- pValue = takeWhile1 (inClass "A-Za-z0-9_")
+  -- @
+  --
   {-# INLINE CONLIKE inClass #-}
   inClass :: [Char] -> Char -> Bool
   inClass (x:'-':y:rest)  = \c -> (x <= c && c <= y) || inClass rest c
@@ -201,6 +262,9 @@ where
   inClass []              = \_ -> False
 
 
+  -- |
+  -- Negated 'inClass', faster than using @not . inClass@.
+  --
   {-# INLINE CONLIKE notInClass #-}
   notInClass :: [Char] -> Char -> Bool
   notInClass (x:'-':y:rest) = \c -> (x > c || c > y) || notInClass rest c
@@ -208,17 +272,28 @@ where
   notInClass []             = \_ -> False
 
 
+  -- |
+  -- Efficiently consume as long as the input characters match the predicate.
+  -- An inverse of 'takeTill'.
+  --
   {-# INLINE CONLIKE takeWhile #-}
   takeWhile :: (Char -> Bool) -> Parser ByteString
   takeWhile test = takeTill (not . test)
 
 
+  -- |
+  -- Like 'takeWhile', but requires at least a single character.
+  --
   {-# INLINE CONLIKE takeWhile1 #-}
   takeWhile1 :: (Char -> Bool) -> Parser ByteString
   takeWhile1 test = provided (not . null) $
                     Data.ByteString.Parser.Char8.takeWhile test
 
 
+  -- |
+  -- Efficiently consume until a character matching the predicate is found.
+  -- An inverse of 'Data.ByteString.Parser.Char8.takeWhile'.
+  --
   {-# INLINE CONLIKE takeTill #-}
   takeTill :: (Char -> Bool) -> Parser ByteString
   takeTill test = Parser \inp ->
@@ -226,12 +301,19 @@ where
      in Just (splitAt n inp)
 
 
+  -- |
+  -- Same as 'takeTill', but requires at least a single character.
+  --
   {-# INLINE CONLIKE takeTill1 #-}
   takeTill1 :: (Char -> Bool) -> Parser ByteString
   takeTill1 test = provided (not . null) $
                     Data.ByteString.Parser.Char8.takeTill test
 
 
+  -- |
+  -- Accepts optional @\'+\'@ or @\'-\'@ character and then applies it to
+  -- the following parser result.
+  --
   {-# INLINE signed #-}
   signed :: (Num a) => Parser a -> Parser a
   signed runNumber = (char '-' *> fmap negate runNumber)
@@ -239,21 +321,35 @@ where
                  <|> (runNumber)
 
 
+  -- |
+  -- Accepts an integral number in the decimal format.
+  --
   {-# INLINE decimal #-}
   decimal :: (Integral a) => Parser a
   decimal = Parser LI.readDecimal
 
 
+  -- |
+  -- Accepts an integral number in the hexadecimal format in either case.
+  -- Does not look for @0x@ or similar prefixes.
+  --
   {-# INLINE hexadecimal #-}
   hexadecimal :: (Integral a) => Parser a
   hexadecimal = Parser LI.readHexadecimal
 
 
+  -- |
+  -- Accepts an integral number in the octal format.
+  --
   {-# INLINE octal #-}
   octal :: (Integral a) => Parser a
   octal = Parser LI.readOctal
 
 
+  -- |
+  -- Accepts a fractional number as a decimal optinally followed by a colon
+  -- and the fractional part. Does not support exponentiation.
+  --
   {-# INLINE fractional #-}
   fractional :: (Fractional a) => Parser a
   fractional = Parser LF.readDecimal
