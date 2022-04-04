@@ -99,21 +99,6 @@ where
   char c = satisfy (c ==)
 
 
-  {-# INLINE space #-}
-  space :: Parser Char
-  space = satisfy isSpace
-
-
-  {-# INLINE skipSpace #-}
-  skipSpace :: Parser ()
-  skipSpace = void $ Data.ByteString.Parser.Char8.takeWhile isSpace
-
-
-  {-# INLINE isSpace #-}
-  isSpace :: Char -> Bool
-  isSpace c = (c == ' ') || ('\t' <= c && c <= '\r')
-
-
   {-# INLINE CONLIKE notChar #-}
   notChar :: Char -> Parser Char
   notChar c = satisfy (c /=)
@@ -136,6 +121,21 @@ where
              in if isOk c
                    then Just (c, unsafeTail inp)
                    else Nothing
+
+
+  {-# INLINE space #-}
+  space :: Parser Char
+  space = satisfy isSpace
+
+
+  {-# INLINE skipSpace #-}
+  skipSpace :: Parser ()
+  skipSpace = void $ Data.ByteString.Parser.Char8.takeWhile isSpace
+
+
+  {-# INLINE isSpace #-}
+  isSpace :: Char -> Bool
+  isSpace c = (c == ' ') || ('\t' <= c && c <= '\r')
 
 
   {-# INLINE peekChar #-}
