@@ -230,18 +230,20 @@ where
   {-# INLINE CONLIKE runScanner #-}
   runScanner :: s -> (s -> Char -> Maybe s) -> Parser (ByteString, s)
   runScanner state scanner = Parser \inp ->
-    let (state', n) = scanBytes state scanner 0 (unpack inp)
-        (res, more) = splitAt n inp
+    let (more, state') = scanStep scanner state inp
+        res = unsafeTake (length inp - length more) inp
      in Just ((res, state'), more)
 
 
-  {-# INLINE scanBytes #-}
-  scanBytes :: s -> (s -> Char -> Maybe s) -> Int -> [Word8] -> (s, Int)
-  scanBytes !state _scanner !n [] = (state, n)
-  scanBytes !state scanner !n (x:more) =
-    case scanner state (w2c x) of
-      Just state' -> scanBytes state' scanner (succ n) more
-      Nothing -> (state, n)
+  scanStep :: (s -> Char -> Maybe s) -> s -> ByteString -> (ByteString, s)
+  scanStep scanner !state !inp =
+    case null inp of
+      True -> (inp, state)
+      False ->
+        case scanner state (w2c (unsafeHead inp)) of
+          Nothing -> (inp, state)
+          Just state' ->
+            scanStep scanner state' (unsafeDrop 1 inp)
 
 
   -- |

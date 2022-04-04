@@ -180,21 +180,22 @@ where
   scan state scanner = fst <$> runScanner state scanner
 
 
+  -- |
+  -- Like 'scan', but also returns the final scanner state.
+  --
   {-# INLINE CONLIKE runScanner #-}
   runScanner :: s -> (s -> Char -> Maybe s) -> Parser (Text, s)
-  runScanner state scanner = Parser \inp ->
-    let (state', n) = scanBytes state scanner 0 (unpack inp)
-        (res, more) = splitAt n inp
-     in Just ((res, state'), more)
-
-
-  {-# INLINE scanBytes #-}
-  scanBytes :: s -> (s -> Char -> Maybe s) -> Int -> [Char] -> (s, Int)
-  scanBytes !state _scanner !n [] = (state, n)
-  scanBytes !state scanner !n (x:more) =
-    case scanner state x of
-      Just state' -> scanBytes state' scanner (succ n) more
-      Nothing -> (state, n)
+  runScanner state scanner = Parser \inp -> loop inp state 0
+    where
+      loop inp !st !n =
+        case n >= lengthWord8 inp of
+          True -> Just ((inp, st), mempty)
+          False ->
+            case iter inp n of
+              Iter c n' ->
+                case scanner st c of
+                  Nothing -> Just ((takeWord8 n inp, st), dropWord8 n inp)
+                  Just st' -> loop inp st' (n + n')
 
 
   {-# INLINE CONLIKE takeWhile #-}

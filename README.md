@@ -3,7 +3,7 @@
 **Strict ByteString Parser Combinator**
 
 - Simple. Feel free to contribute.
-- Fast. Faster then Attoparsec.
+- Fast. Sometimes faster then Attoparsec.
 - ASCII. Good enough for IETF formats.
 - Also Text. But quite slower.
 

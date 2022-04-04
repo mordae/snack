@@ -41,6 +41,8 @@ where
     , bgroup "scan"
         [ bench "Data.ByteString.Parser.Char8" $ nf scKeyValue (cs $! sampleKeyValue)
         , bench "Data.Attoparsec.ByteString"   $ nf acKeyValue (cs $! sampleKeyValue)
+        , bench "Data.Text.Parser"             $ nf stKeyValue (cs $! sampleKeyValue)
+        , bench "Data.Attoparsec.Text"         $ nf atKeyValue (cs $! sampleKeyValue)
         ]
     ]
 
@@ -346,6 +348,37 @@ where
         _   <- AC.char '"'
         val <- AC.scan False scanString
         _   <- AC.char '"'
+        return (key, val)
+
+
+  stKeyValue :: Text -> Maybe (Text, Text)
+  stKeyValue = ST.parseOnly (pKeyValue <* ST.endOfInput)
+    where
+      pKeyValue = do
+        _   <- ST.skipSpace
+        key <- ST.takeWhile1 (ST.inClass "A-Za-z0-9_-")
+        _   <- ST.skipSpace
+        _   <- ST.skipSpace
+        '=' <- ST.char '='
+        _   <- ST.skipSpace
+        _   <- ST.char '"'
+        val <- ST.scan False scanString
+        _   <- ST.char '"'
+        return (key, val)
+
+
+  atKeyValue :: Text -> Either String (Text, Text)
+  atKeyValue = AT.parseOnly (pKeyValue <* AT.endOfInput)
+    where
+      pKeyValue = do
+        _   <- AT.skipSpace
+        key <- AT.takeWhile1 (AT.inClass "A-Za-z0-9_-")
+        _   <- AT.skipSpace
+        '=' <- AT.char '='
+        _   <- AT.skipSpace
+        _   <- AT.char '"'
+        val <- AT.scan False scanString
+        _   <- AT.char '"'
         return (key, val)
 
 
