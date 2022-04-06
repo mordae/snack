@@ -16,7 +16,7 @@ extra-source-files: README.md
 
 source-repository head
     type:     git
-    location: https://github.com/mordae/snack
+    location: https://github.com/mordae/snack.git
 
 library
     exposed-modules:
