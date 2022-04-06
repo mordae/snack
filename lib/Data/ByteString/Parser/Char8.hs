@@ -258,8 +258,7 @@ where
   --
   {-# INLINE CONLIKE takeWhile1 #-}
   takeWhile1 :: (Char -> Bool) -> Parser ByteString
-  takeWhile1 test = provided (not . null) $
-                    Data.ByteString.Parser.Char8.takeWhile test
+  takeWhile1 test = Data.ByteString.Parser.Char8.takeWhile test `provided` (not . null)
 
 
   -- |
@@ -278,8 +277,7 @@ where
   --
   {-# INLINE CONLIKE takeTill1 #-}
   takeTill1 :: (Char -> Bool) -> Parser ByteString
-  takeTill1 test = provided (not . null) $
-                    Data.ByteString.Parser.Char8.takeTill test
+  takeTill1 test = Data.ByteString.Parser.Char8.takeTill test `provided` (not . null)
 
 
   -- |

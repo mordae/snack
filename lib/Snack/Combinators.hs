@@ -36,14 +36,14 @@ where
   -- Example:
   --
   -- @
-  -- pInput = takeWhile isLetter `provided` (odd . length)
+  -- pInput = takeWhile isLetter \`provided\` (odd . length)
   -- @
   --
   {-# INLINE CONLIKE provided #-}
-  {-# SPECIALIZE provided :: (a -> Bool) -> BSP.Parser a -> BSP.Parser a #-}
-  {-# SPECIALIZE provided :: (a -> Bool) -> TP.Parser a -> TP.Parser a #-}
-  provided :: (Alternative m, Monad m) => (a -> Bool) -> m a -> m a
-  provided test par = do
+  {-# SPECIALIZE provided :: BSP.Parser a -> (a -> Bool) -> BSP.Parser a #-}
+  {-# SPECIALIZE provided :: TP.Parser a -> (a -> Bool) -> TP.Parser a #-}
+  provided :: (Alternative m, Monad m) => m a -> (a -> Bool) -> m a
+  provided par test = do
     x <- par
     if test x
        then pure x
@@ -137,7 +137,7 @@ where
   -- Example:
   --
   -- @
-  -- pBodyLines = pLine `manyTill` pEnd
+  -- pBodyLines = pLine \`manyTill\` pEnd
   --   where pLine = takeTill (== '\n')
   --         pEnd  = string "\n.\n"
   -- @
@@ -183,7 +183,7 @@ where
   -- Example:
   --
   -- @
-  -- pToken = takeWhile1 (inClass "A-Za-z0-9_") `wrap` takeWhile isSpace
+  -- pToken = takeWhile1 (inClass "A-Za-z0-9_") \`wrap\` takeWhile isSpace
   -- @
   --
   {-# INLINE CONLIKE wrap #-}

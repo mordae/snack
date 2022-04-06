@@ -205,8 +205,7 @@ where
 
   {-# INLINE CONLIKE takeWhile1 #-}
   takeWhile1 :: (Char -> Bool) -> Parser Text
-  takeWhile1 test = provided (not . null) $
-                    Data.Text.Parser.takeWhile test
+  takeWhile1 test = Data.Text.Parser.takeWhile test `provided` (not . null)
 
 
   {-# INLINE CONLIKE takeTill #-}
@@ -218,8 +217,7 @@ where
 
   {-# INLINE CONLIKE takeTill1 #-}
   takeTill1 :: (Char -> Bool) -> Parser Text
-  takeTill1 test = provided (not . null) $
-                    Data.Text.Parser.takeTill test
+  takeTill1 test = Data.Text.Parser.takeTill test `provided` (not . null)
 
 
   {-# INLINE CONLIKE match #-}
