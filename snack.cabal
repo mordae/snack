@@ -12,7 +12,9 @@ synopsis:           Strict ByteString Parser Combinator
 description:        Simple parser combinator for strict ByteString values.
 category:           Text, Parsing
 build-type:         Simple
-extra-source-files: README.md
+extra-source-files:
+    README.md
+    Changelog.md
 
 source-repository head
     type:     git
