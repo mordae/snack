@@ -29,8 +29,8 @@ module Data.ByteString.Parser.Char8
   , Data.ByteString.Parser.Char8.take
   , scan
   , runScanner
-  , inClass
-  , notInClass
+  , inRange
+  , notInRange
   , Data.ByteString.Parser.Char8.takeWhile
   , takeWhile1
   , takeTill
@@ -87,10 +87,12 @@ where
   import Data.ByteString as BS
   import Data.ByteString.Unsafe as BS
 
-  import Data.ByteString.Parser
-    hiding ( satisfy, scan, runScanner
-           , takeTill, takeWhile, takeTill1, takeWhile1
-           )
+  import Snack.Combinators
+
+  import Data.ByteString.Parser ( Parser(..), parseOnly
+                                , string, count, match
+                                , takeByteString, endOfInput, atEnd
+                                )
 
   import qualified Data.ByteString.Lex.Fractional as LF
   import qualified Data.ByteString.Lex.Integral as LI
@@ -229,49 +231,17 @@ where
   --
   {-# INLINE CONLIKE runScanner #-}
   runScanner :: s -> (s -> Char -> Maybe s) -> Parser (ByteString, s)
-  runScanner state scanner = Parser \inp ->
-    let (more, state') = scanStep scanner state inp
-        res = unsafeTake (length inp - length more) inp
-     in Just ((res, state'), more)
-
-
-  scanStep :: (s -> Char -> Maybe s) -> s -> ByteString -> (ByteString, s)
-  scanStep scanner !state !inp =
-    case null inp of
-      True -> (inp, state)
-      False ->
-        case scanner state (w2c (unsafeHead inp)) of
-          Nothing -> (inp, state)
-          Just state' ->
-            scanStep scanner state' (unsafeDrop 1 inp)
-
-
-  -- |
-  -- Determine whether is the character member of the class specified
-  -- like @\"A-Za-z0-9_-\"@. If you want to include @\'-\'@, put it either
-  -- first or last.
-  --
-  -- Example:
-  --
-  -- @
-  -- pValue = takeWhile1 (inClass "A-Za-z0-9_")
-  -- @
-  --
-  {-# INLINE CONLIKE inClass #-}
-  inClass :: [Char] -> Char -> Bool
-  inClass (x:'-':y:rest)  = \c -> (x <= c && c <= y) || inClass rest c
-  inClass (x:rest)        = \c -> (x == c) || inClass rest c
-  inClass []              = \_ -> False
-
-
-  -- |
-  -- Negated 'inClass', faster than using @not . inClass@.
-  --
-  {-# INLINE CONLIKE notInClass #-}
-  notInClass :: [Char] -> Char -> Bool
-  notInClass (x:'-':y:rest) = \c -> (x > c || c > y) || notInClass rest c
-  notInClass (x:rest)       = \c -> (x /= c) || notInClass rest c
-  notInClass []             = \_ -> False
+  runScanner state scanner = Parser \inp -> loop inp state 0
+    where
+      loop inp !st !n =
+        case n >= length inp of
+          True -> Just ((inp, st), mempty)
+          False ->
+            case unsafeIndex inp n of
+              w ->
+                case scanner st (w2c w) of
+                  Nothing -> Just ((unsafeTake n inp, st), unsafeDrop n inp)
+                  Just st' -> loop inp st' (succ n)
 
 
   -- |

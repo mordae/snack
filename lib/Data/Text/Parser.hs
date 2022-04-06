@@ -29,8 +29,8 @@ module Data.Text.Parser
   , Data.Text.Parser.take
   , scan
   , runScanner
-  , inClass
-  , notInClass
+  , inRange
+  , notInRange
   , Data.Text.Parser.takeWhile
   , takeWhile1
   , takeTill
@@ -292,20 +292,6 @@ where
      in case toCaseFold pfx == toCaseFold str of
           True -> Just (pfx, sfx)
           False -> Nothing
-
-
-  {-# INLINE CONLIKE inClass #-}
-  inClass :: [Char] -> Char -> Bool
-  inClass (x:'-':y:rest)  = \c -> (x <= c && c <= y) || inClass rest c
-  inClass (x:rest)        = \c -> (x == c) || inClass rest c
-  inClass []              = \_ -> False
-
-
-  {-# INLINE CONLIKE notInClass #-}
-  notInClass :: [Char] -> Char -> Bool
-  notInClass (x:'-':y:rest) = \c -> (x > c || c > y) || notInClass rest c
-  notInClass (x:rest)       = \c -> (x /= c) || notInClass rest c
-  notInClass []             = \_ -> False
 
 
   {-# INLINE signed #-}

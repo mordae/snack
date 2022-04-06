@@ -15,7 +15,11 @@ import qualified Data.ByteString.Parser.Char8 as BSP
 
 parseList :: BSP.Parser [ByteString]
 parseList = (token `BSP.wrap` BSP.skipSpace) `BSP.sepBy` BSP.char ','
-  where token = BSP.takeWhile (BSP.inClass "a-zA-Z0-9_-")
+  where token = BSP.takeWhile isToken
+        isToken c = inRange 'a' 'z' c ||
+                    inRange 'A' 'Z' c ||
+                    inRange '0' '9' c ||
+                    c == '_' || c == '-'
 
 main :: IO ()
 main = do

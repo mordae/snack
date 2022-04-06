@@ -18,6 +18,8 @@ module Snack.Combinators
   , sepBy
   , sepBy1
   , wrap
+  , inRange
+  , notInRange
   )
 where
   import Control.Applicative
@@ -189,6 +191,34 @@ where
   {-# SPECIALIZE wrap :: TP.Parser a -> TP.Parser b -> TP.Parser a #-}
   wrap :: (Applicative f) => f a -> f b -> f a
   wrap par wrapper = wrapper *> par <* wrapper
+
+
+  -- |
+  -- Tests whether the character lies within given range.
+  --
+  -- Definition:
+  --
+  -- @
+  -- inRange lo hi = \c -> (lo <= c && c <= hi)
+  -- @
+  --
+  {-# INLINE CONLIKE inRange #-}
+  inRange :: Char -> Char -> Char -> Bool
+  inRange lo hi = \c -> (lo <= c && c <= hi)
+
+
+  -- |
+  -- Negation of 'inRange'.
+  --
+  -- Definition:
+  --
+  -- @
+  -- notInRange lo hi = \c -> (c <= lo || hi <= c)
+  -- @
+  --
+  {-# INLINE CONLIKE notInRange #-}
+  notInRange :: Char -> Char -> Char -> Bool
+  notInRange lo hi = \c -> (lo >= c || c >= hi)
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
