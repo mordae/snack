@@ -38,7 +38,7 @@ where
         , bench "Data.Text.Parser"             $ nf stMedia (cs $! sampleMedia)
         , bench "Data.Attoparsec.Text"         $ nf atMedia (cs $! sampleMedia)
         ]
-    , bgroup "scan"
+    , bgroup "kv"
         [ bench "Data.ByteString.Parser.Char8" $ nf scKeyValue (cs $! sampleKeyValue)
         , bench "Data.Attoparsec.ByteString"   $ nf acKeyValue (cs $! sampleKeyValue)
         , bench "Data.Text.Parser"             $ nf stKeyValue (cs $! sampleKeyValue)
@@ -325,7 +325,7 @@ where
     where
       pKeyValue = do
         _   <- SC.skipSpace
-        key <- SC.takeWhile1 (SC.inClass "A-Za-z0-9_-")
+        key <- SC.takeWhile1 isToken
         _   <- SC.skipSpace
         _   <- SC.skipSpace
         '=' <- SC.char '='
@@ -341,7 +341,7 @@ where
     where
       pKeyValue = do
         _   <- AC.skipSpace
-        key <- AC.takeWhile1 (AC.inClass "A-Za-z0-9_-")
+        key <- AC.takeWhile1 isToken
         _   <- AC.skipSpace
         '=' <- AC.char '='
         _   <- AC.skipSpace
@@ -356,7 +356,7 @@ where
     where
       pKeyValue = do
         _   <- ST.skipSpace
-        key <- ST.takeWhile1 (ST.inClass "A-Za-z0-9_-")
+        key <- ST.takeWhile1 isToken
         _   <- ST.skipSpace
         _   <- ST.skipSpace
         '=' <- ST.char '='
@@ -372,7 +372,7 @@ where
     where
       pKeyValue = do
         _   <- AT.skipSpace
-        key <- AT.takeWhile1 (AT.inClass "A-Za-z0-9_-")
+        key <- AT.takeWhile1 isToken
         _   <- AT.skipSpace
         '=' <- AT.char '='
         _   <- AT.skipSpace
@@ -387,6 +387,14 @@ where
   scanString False '"'  = Nothing
   scanString False '\\' = Just True
   scanString False _    = Just False
+
+
+  isToken :: Char -> Bool
+  isToken c = ('A' <= c && c <= 'Z')
+           || ('a' <= c && c <= 'z')
+           || ('0' <= c && c <= '9')
+           || ('_' == c)
+           || ('-' == c)
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
