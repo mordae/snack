@@ -10,7 +10,7 @@ homepage:           https://github.com/mordae/snack#readme
 bug-reports:        https://github.com/mordae/snack/issues
 synopsis:           Strict ByteString Parser Combinator
 description:        Simple parser combinator for strict ByteString values.
-category:           System
+category:           Text, Parsing
 build-type:         Simple
 extra-source-files: README.md
 
