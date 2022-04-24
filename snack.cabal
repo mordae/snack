@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               snack
-version:            0.1.0.0
+version:            0.2.0.0
 license:            CC0-1.0
 license-file:       LICENSE
 copyright:          Jan Hamal Dvořák
