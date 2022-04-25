@@ -104,8 +104,8 @@ where
                                 , takeByteString, endOfInput, atEnd
                                 )
 
-  import qualified Data.ByteString.Lex.Fractional as LF
-  import qualified Data.ByteString.Lex.Integral as LI
+  import Data.ByteString.Lex.Fractional qualified as LF
+  import Data.ByteString.Lex.Integral qualified as LI
 
 
   -- |

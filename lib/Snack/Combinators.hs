@@ -51,7 +51,7 @@ where
 
 
   -- |
-  -- Tries various parsers, one by one. Alias for 'asum'.
+  -- Tries various parsers, one by one.
   --
   -- Example:
   --
@@ -67,7 +67,11 @@ where
   {-# SPECIALIZE choice :: [BSP.Parser a] -> BSP.Parser a #-}
   {-# SPECIALIZE choice :: [TP.Parser a] -> TP.Parser a #-}
   choice :: (Alternative f) => [f a] -> f a
+#if MIN_VERSION_base(4, 16, 0)
   choice = asum
+#else
+  choice = foldr (<|>) empty
+#endif
 
 
   -- |

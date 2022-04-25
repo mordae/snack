@@ -7,8 +7,6 @@
 -- Portability :  non-portable (ghc)
 --
 
-{-# OPTIONS_GHC -ddump-to-file -ddump-stg-from-core -ddump-cmm-opt -dsuppress-all -dppr-cols=200 #-}
-
 module Main
   ( main
   )
@@ -24,10 +22,10 @@ where
 
   import Criterion.Main
 
-  import qualified Data.ByteString.Parser.Char8 as SC
-  import qualified Data.Attoparsec.ByteString.Char8 as AC
-  import qualified Data.Text.Parser as ST
-  import qualified Data.Attoparsec.Text as AT
+  import Data.ByteString.Parser.Char8 qualified as SC
+  import Data.Attoparsec.ByteString.Char8 qualified as AC
+  import Data.Text.Parser qualified as ST
+  import Data.Attoparsec.Text qualified as AT
 
 
   main :: IO ()

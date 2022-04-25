@@ -503,6 +503,9 @@ where
      in case bspar bstr of
           Nothing -> Nothing
           Just (x, more) ->
+            -- This should be perfectly safe as long as the embedded
+            -- parser returns the actual remaining input and not some
+            -- random chunk of bytes.
             let n = lengthWord8 inp - BS.length more
              in Just (x, dropWord8 n inp)
 
