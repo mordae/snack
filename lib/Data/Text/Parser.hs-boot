@@ -3,9 +3,16 @@ where
   import Control.Applicative
   import Data.Text (Text)
 
+  data Result a
+    = Success a {-# UNPACK #-} !Text
+    | Failure [String] {-# UNPACK #-} !Text
+    | Error String {-# UNPACK #-} !Text {-# UNPACK #-} !Int
+
+  instance Functor Result where
+
   newtype Parser a =
     Parser
-      { runParser :: Text -> Maybe (a, Text)
+      { runParser :: Text -> Result a
       }
 
   instance Functor Parser

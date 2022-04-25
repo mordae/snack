@@ -92,7 +92,7 @@ where
         SC.fractional
 
       pToken :: SC.Parser ByteString
-      pToken = pSpaced $ SC.takeTill1 isSpecial
+      pToken = pSpaced $ SC.label "token" $ SC.takeTill1 isSpecial
 
       pSeparator :: SC.Parser Char
       pSeparator = pSpaced $ SC.char ','
@@ -101,7 +101,7 @@ where
       pValue = pToken <|> pQuotedStr
 
       pQuotedStr :: SC.Parser ByteString
-      pQuotedStr = pSpaced $ pQuoted $ SC.takeWhile isStrChar
+      pQuotedStr = pSpaced $ SC.label "quoted string" $ pQuoted $ SC.takeWhile isStrChar
 
       pSpaced :: SC.Parser a -> SC.Parser a
       pSpaced p = p `SC.wrap` SC.takeWhile SC.isSpace

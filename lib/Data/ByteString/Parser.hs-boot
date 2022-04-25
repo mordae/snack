@@ -3,9 +3,16 @@ where
   import Control.Applicative
   import Data.ByteString (ByteString)
 
+  data Result a
+    = Success a {-# UNPACK #-} !ByteString
+    | Failure [String] {-# UNPACK #-} !ByteString
+    | Error String {-# UNPACK #-} !ByteString {-# UNPACK #-} !Int
+
+  instance Functor Result where
+
   newtype Parser a =
     Parser
-      { runParser :: ByteString -> Maybe (a, ByteString)
+      { runParser :: ByteString -> Result a
       }
 
   instance Functor Parser

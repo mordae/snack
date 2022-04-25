@@ -8,9 +8,17 @@
 --
 -- This module provides a parser for ASCII 'ByteString'.
 --
+--   * If you\'d like to parse Unicode text, look instead at the
+--     "Data.Text.Parser". Is is slower, but in a way more correct.
+--
+--   * If you\'d like to parse byte sequences, look instead at the
+--     "Data.ByteString.Parser". It reuses the same 'Parser', but
+--     provides functions working with 'Word8' instead of 'Char'.
+--
 
 module Data.ByteString.Parser.Char8
   ( Parser(..)
+  , Result(..)
   , parseOnly
 
     -- * Characters
@@ -57,6 +65,8 @@ module Data.ByteString.Parser.Char8
   , sepBy1
   , wrap
   , match
+  , label
+  , extent
 
     -- * End Of Input
   , takeByteString
@@ -89,8 +99,8 @@ where
 
   import Snack.Combinators
 
-  import Data.ByteString.Parser ( Parser(..), parseOnly
-                                , string, count, match
+  import Data.ByteString.Parser ( Parser(..), Result(..), parseOnly
+                                , string, count, match, label, extent
                                 , takeByteString, endOfInput, atEnd
                                 )
 
@@ -103,7 +113,7 @@ where
   --
   {-# INLINE CONLIKE char #-}
   char :: Char -> Parser Char
-  char c = satisfy (c ==)
+  char c = label (show c) $ satisfy (c ==)
 
 
   -- |
@@ -121,8 +131,8 @@ where
   anyChar :: Parser Char
   anyChar = Parser \inp ->
     if null inp
-       then Nothing
-       else Just (w2c (unsafeHead inp), unsafeTail inp)
+       then Failure ["any character"] inp
+       else Success (w2c (unsafeHead inp)) (unsafeTail inp)
 
 
   -- |
@@ -132,11 +142,11 @@ where
   satisfy :: (Char -> Bool) -> Parser Char
   satisfy isOk = Parser \inp ->
     if null inp
-       then Nothing
+       then Failure ["more input"] inp
        else let c = w2c (unsafeHead inp)
              in if isOk c
-                   then Just (c, unsafeTail inp)
-                   else Nothing
+                   then Success c (unsafeTail inp)
+                   else Failure [] inp
 
 
   -- |
@@ -145,7 +155,7 @@ where
   --
   {-# INLINE space #-}
   space :: Parser Char
-  space = satisfy isSpace
+  space = label "space" $ satisfy isSpace
 
 
   -- |
@@ -178,8 +188,8 @@ where
   peekChar :: Parser Char
   peekChar = Parser \inp ->
     if null inp
-       then Nothing
-       else Just (w2c (unsafeHead inp), inp)
+       then Failure ["more input"] inp
+       else Success (w2c (unsafeHead inp)) inp
 
 
   -- |
@@ -191,8 +201,8 @@ where
   stringCI str = Parser \inp ->
     let (pfx, sfx) = splitAt (length str) inp
      in case toCaseFold pfx == toCaseFold str of
-          True -> Just (pfx, sfx)
-          False -> Nothing
+          True -> Success pfx sfx
+          False -> Failure [show pfx] inp
 
 
   -- |
@@ -206,15 +216,15 @@ where
 
 
   -- |
-  -- Accepts given number of characters.
-  -- Fails when not enough characters are available.
+  -- Accepts given number of bytes.
+  -- Fails when not enough bytes are available.
   --
   {-# INLINE CONLIKE take #-}
   take :: Int -> Parser ByteString
   take n = Parser \inp ->
     if n > length inp
-       then Nothing
-       else Just (splitAt n inp)
+       then Failure [show n <> " more bytes"] inp
+       else Success (unsafeTake n inp) (unsafeDrop n inp)
 
 
   -- |
@@ -235,12 +245,12 @@ where
     where
       loop inp !st !n =
         case n >= length inp of
-          True -> Just ((inp, st), mempty)
+          True -> Success (inp, st) mempty
           False ->
             case unsafeIndex inp n of
               w ->
                 case scanner st (w2c w) of
-                  Nothing -> Just ((unsafeTake n inp, st), unsafeDrop n inp)
+                  Nothing -> Success (unsafeTake n inp, st) (unsafeDrop n inp)
                   Just st' -> loop inp st' (succ n)
 
 
@@ -269,7 +279,7 @@ where
   takeTill :: (Char -> Bool) -> Parser ByteString
   takeTill test = Parser \inp ->
     let n = fromMaybe (length inp) $ findIndex (test . w2c) inp
-     in Just (splitAt n inp)
+     in Success (unsafeTake n inp) (unsafeDrop n inp)
 
 
   -- |
@@ -296,7 +306,10 @@ where
   --
   {-# INLINE decimal #-}
   decimal :: (Integral a) => Parser a
-  decimal = Parser LI.readDecimal
+  decimal = Parser \inp ->
+    case LI.readDecimal inp of
+      Just (res, more) -> Success res more
+      Nothing -> Failure ["decimal"] inp
 
 
   -- |
@@ -305,7 +318,10 @@ where
   --
   {-# INLINE hexadecimal #-}
   hexadecimal :: (Integral a) => Parser a
-  hexadecimal = Parser LI.readHexadecimal
+  hexadecimal = Parser \inp ->
+    case LI.readHexadecimal inp of
+      Just (res, more) -> Success res more
+      Nothing -> Failure ["hexadecimal"] inp
 
 
   -- |
@@ -313,7 +329,10 @@ where
   --
   {-# INLINE octal #-}
   octal :: (Integral a) => Parser a
-  octal = Parser LI.readOctal
+  octal = Parser \inp ->
+    case LI.readOctal inp of
+      Just (res, more) -> Success res more
+      Nothing -> Failure ["octal"] inp
 
 
   -- |
@@ -322,7 +341,10 @@ where
   --
   {-# INLINE fractional #-}
   fractional :: (Fractional a) => Parser a
-  fractional = Parser LF.readDecimal
+  fractional = Parser \inp ->
+    case LF.readDecimal inp of
+      Just (res, more) -> Success res more
+      Nothing -> Failure ["fractional"] inp
 
 
   {-# INLINE w2c #-}

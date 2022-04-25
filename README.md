@@ -28,7 +28,7 @@ main = do
   putStrLn $ show $ BSP.runParser (parseList <* BSP.endOfInput) "^quux"
 
 -- Will output:
--- Just (["monkey","wrench","bananas"],"")
--- Just ([""],"^quux")
--- Nothing
+-- Success ["monkey","wrench","bananas"] ""
+-- Success [""] "^quux"
+-- Failure ["end of input"] "^quux"
 ```

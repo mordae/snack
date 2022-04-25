@@ -19,6 +19,7 @@
 
 module Data.ByteString.Parser
   ( Parser(..)
+  , Result(..)
   , parseOnly
 
     -- * Bytes
@@ -52,6 +53,8 @@ module Data.ByteString.Parser
   , sepBy1
   , wrap
   , match
+  , label
+  , extent
 
     -- * End Of Input
   , takeByteString
@@ -84,68 +87,110 @@ where
   import Snack.Combinators
 
 
+  -- |
+  -- Result represents either success or some kind of failure.
+  --
+  -- You can find the problematic offset by subtracting length of the
+  -- remainder from length of the original input.
+  --
+  data Result a
+    = Success a {-# UNPACK #-} !ByteString
+      -- ^ Parser successfully match the input.
+      --   Produces the parsing result and the remainder of the input.
+
+    | Failure [String] {-# UNPACK #-} !ByteString
+      -- ^ Parser failed to match the input.
+      --   Produces list of expected inputs and the corresponding remainder.
+
+    | Error String {-# UNPACK #-} !ByteString {-# UNPACK #-} !Int
+      -- ^ 'fail' was called somewhere during the parsing.
+      --    Produces the reason and the remainder at the corresponding point
+      --    with length of the problematic extent.
+
+    deriving (Eq, Show)
+
+  instance Functor Result where
+    {-# INLINE fmap #-}
+    fmap fn (Success res more) = Success (fn res) more
+    fmap _  (Failure expected more) = Failure expected more
+    fmap _  (Error reason more len) = Error reason more len
+
+
+  -- |
+  -- Parser for 'ByteString' inputs.
+  --
   newtype Parser a =
     Parser
-      { runParser :: ByteString -> Maybe (a, ByteString)
+      { runParser :: ByteString -> Result a
+        -- ^ Run the parser on specified input.
       }
 
   instance Functor Parser where
     {-# INLINE fmap #-}
     fmap fn Parser{runParser} = Parser \inp ->
-      case runParser inp of
-        Just (res, rest) -> Just (fn res, rest)
-        Nothing -> Nothing
+      fmap fn (runParser inp)
 
   instance Applicative Parser where
     {-# INLINE pure #-}
-    pure x = Parser \inp -> Just (x, inp)
+    pure x = Parser \inp -> Success x inp
 
     {-# INLINE (<*>) #-}
     (Parser runFn) <*> (Parser runArg) = Parser \inp ->
       case runFn inp of
-        Nothing -> Nothing
-        Just (fn, rest) ->
-          case runArg rest of
-            Nothing -> Nothing
-            Just (x, rest') -> Just (fn x, rest')
+        Error reason more len -> Error reason more len
+        Failure expected more -> Failure expected more
+        Success fn rest -> fmap fn (runArg rest)
 
   instance Alternative Parser where
     {-# INLINE empty #-}
-    empty = Parser \_ -> Nothing
+    empty = Parser \inp -> Failure [] inp
 
+    -- |
+    -- Tries the right branch only if the left brach produces Failure.
+    -- Does not mask Error.
+    --
     {-# INLINE (<|>) #-}
     (Parser runLeft) <|> (Parser runRight) = Parser \inp ->
       case runLeft inp of
-        Just r  -> Just r
-        Nothing -> runRight inp
+        Success res more -> Success res more
+        Error reason more len -> Error reason more len
+        Failure expected more ->
+          case runRight inp of
+            Success res' more' -> Success res' more'
+            Error reason' more' len' -> Error reason' more' len'
+            Failure expected' more' ->
+              -- Longer match (shorter remainder) wins.
+              case length more `compare` length more' of
+                LT -> Failure expected more
+                EQ -> Failure (expected <> expected') more
+                GT -> Failure expected' more'
 
   instance Monad Parser where
     {-# INLINE (>>=) #-}
     (Parser runLeft) >>= right = Parser \inp ->
       case runLeft inp of
-        Nothing -> Nothing
-        Just (x, more) -> runParser (right x) more
+        Error reason more len -> Error reason more len
+        Failure expected more -> Failure expected more
+        Success res more -> runParser (right res) more
 
   instance MonadPlus Parser
 
   instance MonadFail Parser where
+    -- |
+    -- Fail the whole parser with given reason.
+    --
+    -- If you want the best error report possible, fail at the end of a
+    -- relevant 'extent'.
+    --
+    -- For example, if you are parsing a mapping that is syntactically valid,
+    -- but does not contain some mandatory keys, fail after parsing the whole
+    -- mapping and make sure that the maaping parser and the 'fail' call are
+    -- enclosed in an 'extent'.
+    --
+    -- That way, the error will indicate the extent remainder and length.
+    --
     {-# INLINE CONLIKE fail #-}
-    fail _ = mzero
-
-
-  -- |
-  -- Discards the remaining input and returns just the parse result.
-  -- You might want to combine it with 'endOfInput' for the best effect.
-  --
-  -- Example:
-  --
-  -- @
-  -- parseOnly (pContacts \<* endOfInput) bstr
-  -- @
-  --
-  {-# INLINE CONLIKE parseOnly #-}
-  parseOnly :: Parser a -> ByteString -> Maybe a
-  parseOnly par = \inp -> fst <$> runParser par inp
+    fail reason = Parser \inp -> Error reason inp 0
 
 
   -- |
@@ -165,14 +210,32 @@ where
 
 
   -- |
+  -- Discards the remaining input and returns just the parse result.
+  -- You might want to combine it with 'endOfInput' for the best effect.
+  --
+  -- Example:
+  --
+  -- @
+  -- parseOnly (pContacts \<* endOfInput) bstr
+  -- @
+  --
+  {-# INLINE CONLIKE parseOnly #-}
+  parseOnly :: Parser a -> ByteString -> Maybe a
+  parseOnly par = \inp ->
+    case runParser par inp of
+      Success res _ -> Just res
+      _otherwise    -> Nothing
+
+
+  -- |
   -- Accepts a single byte.
   --
   {-# INLINE anyByte #-}
   anyByte :: Parser Word8
   anyByte = Parser \inp ->
     if null inp
-       then Nothing
-       else Just (unsafeHead inp, unsafeTail inp)
+       then Failure ["any byte"] inp
+       else Success (unsafeHead inp) (unsafeTail inp)
 
 
   -- |
@@ -182,11 +245,11 @@ where
   satisfy :: (Word8 -> Bool) -> Parser Word8
   satisfy isOk = Parser \inp ->
     if null inp
-       then Nothing
+       then Failure ["more input"] inp
        else let c = unsafeHead inp
              in if isOk c
-                   then Just (c, unsafeTail inp)
-                   else Nothing
+                   then Success c (unsafeTail inp)
+                   else Failure [] inp
 
 
   -- |
@@ -199,8 +262,8 @@ where
   peekByte :: Parser Word8
   peekByte = Parser \inp ->
     if null inp
-       then Nothing
-       else Just (unsafeHead inp, inp)
+       then Failure ["more input"] inp
+       else Success (unsafeHead inp) inp
 
 
   -- |
@@ -211,8 +274,8 @@ where
   string str = Parser \inp ->
     let (pfx, sfx) = splitAt (length str) inp
      in case pfx == str of
-          True -> Just (pfx, sfx)
-          False -> Nothing
+          True -> Success pfx sfx
+          False -> Failure [(show pfx)] inp
 
 
   -- |
@@ -223,8 +286,8 @@ where
   take :: Int -> Parser ByteString
   take n = Parser \inp ->
     if n > length inp
-       then Nothing
-       else Just (splitAt n inp)
+       then Failure [show n <> " more bytes"] inp
+       else Success (unsafeTake n inp) (unsafeDrop n inp)
 
 
   -- |
@@ -244,7 +307,7 @@ where
   runScanner state scanner = Parser \inp ->
     let (state', n) = scanBytes state scanner 0 (unpack inp)
         (res, more) = splitAt n inp
-     in Just ((res, state'), more)
+     in Success (res, state') more
 
 
   {-# INLINE scanBytes #-}
@@ -281,7 +344,7 @@ where
   takeTill :: (Word8 -> Bool) -> Parser ByteString
   takeTill test = Parser \inp ->
     let n = fromMaybe (length inp) $ findIndex test inp
-     in Just (splitAt n inp)
+     in Success (unsafeTake n inp) (unsafeDrop n inp)
 
 
   -- |
@@ -300,10 +363,55 @@ where
   match :: Parser a -> Parser (ByteString, a)
   match par = Parser \inp ->
     case runParser par inp of
-      Nothing -> Nothing
-      Just (x, more) ->
+      Failure expected more -> Failure expected more
+      Error reason more len -> Error reason more len
+      Success res more ->
         let n = length more
-         in Just ((BS.take n inp, x), more)
+         in Success (BS.take n inp, res) more
+
+
+  -- |
+  -- Names an extent of the parser.
+  --
+  -- When the extent returns a Failure, details are discarded and replaced
+  -- with the extent as a whole.
+  --
+  -- When the extent returns an Error, it is adjusted to cover the whole
+  -- extent, but the reason is left intact.
+  --
+  -- You should strive to make labeled extents as small as possible,
+  -- approximately of a typical token size. For example:
+  --
+  -- @
+  -- pString = label \"string\" $ pStringContents \`wrap\` char \'\"\'
+  -- @
+  --
+  {-# INLINE CONLIKE label #-}
+  label :: String -> Parser a -> Parser a
+  label lbl par = Parser \inp ->
+    case runParser par inp of
+      Success res more -> Success res more
+      Failure _expected _more -> Failure [lbl] inp
+      Error reason more len ->
+        let len' = len + (length inp - length more)
+         in Error reason inp len'
+
+
+  -- |
+  -- Marks an unlabelel extent of the parser.
+  --
+  -- When the extent returns an Error, it is adjusted to cover the whole
+  -- extent, but the reason is left intact.
+  --
+  {-# INLINE CONLIKE extent #-}
+  extent :: Parser a -> Parser a
+  extent par = Parser \inp ->
+    case runParser par inp of
+      Success res more -> Success res more
+      Failure expected more -> Failure expected more
+      Error reason more len ->
+        let len' = len + (length inp - length more)
+         in Error reason inp len'
 
 
   -- |
@@ -311,7 +419,7 @@ where
   --
   {-# INLINE takeByteString #-}
   takeByteString :: Parser ByteString
-  takeByteString = Parser \inp -> Just (inp, mempty)
+  takeByteString = Parser \inp -> Success inp mempty
 
 
   -- |
@@ -320,8 +428,8 @@ where
   {-# INLINE endOfInput #-}
   endOfInput :: Parser ()
   endOfInput = Parser \case
-    inp | null inp  -> Just ((), inp)
-    _otherwise      -> Nothing
+    inp | null inp  -> Success () inp
+    inp             -> Failure ["end of input"] inp
 
 
   -- |
@@ -329,7 +437,7 @@ where
   --
   {-# INLINE atEnd #-}
   atEnd :: Parser Bool
-  atEnd = Parser \inp -> Just (null inp, inp)
+  atEnd = Parser \inp -> Success (null inp) inp
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
