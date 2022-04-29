@@ -207,7 +207,7 @@ where
     let (pfx, sfx) = splitAt (length str) inp
      in case toCaseFold pfx == toCaseFold str of
           True -> Success pfx sfx
-          False -> Failure [show pfx] inp
+          False -> Failure [show str] inp
 
 
   -- |
