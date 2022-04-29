@@ -73,6 +73,10 @@ module Data.ByteString.Parser.Char8
   , endOfInput
   , atEnd
 
+    -- * Position
+  , offset
+  , position
+
     -- * Miscelaneous
     -- |
     -- These are all generic methods, but since I sometimes forget about them,
@@ -102,6 +106,7 @@ where
   import Data.ByteString.Parser ( Parser(..), Result(..), parseOnly
                                 , string, count, match, label, extent
                                 , takeByteString, endOfInput, atEnd
+                                , offset
                                 )
 
   import Data.ByteString.Lex.Fractional qualified as LF
@@ -350,6 +355,21 @@ where
   {-# INLINE w2c #-}
   w2c :: Word8 -> Char
   w2c = unsafeChr . fromIntegral
+
+
+  -- |
+  -- Determine @(line, column)@ from the original input and the remainder.
+  --
+  -- Counts line feed characters leading to the 'offset', so only use it
+  -- on your slow path. For example when describing parsing errors.
+  --
+  position :: ByteString -> ByteString -> (Int, Int)
+  position inp more = (succ line, succ column)
+    where
+      column = length lastLine
+      lastLine = takeWhileEnd (10 /=) leader
+      line = BS.count 10 leader
+      leader = dropEnd (length more) inp
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

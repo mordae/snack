@@ -70,6 +70,10 @@ module Data.Text.Parser
   , endOfInput
   , atEnd
 
+    -- * Position
+  , offset
+  , position
+
     -- * Miscelaneous
     -- |
     -- These are all generic methods, but since I sometimes forget about them,
@@ -554,6 +558,29 @@ where
     case unsafeWithUtf8 LF.readDecimal inp of
       Just (res, more) -> Success res more
       Nothing -> Failure ["fractional"] inp
+
+
+
+  -- |
+  -- Calculate offset from the original input and the remainder.
+  --
+  offset :: Text -> Text -> Int
+  offset inp more = length inp - length more
+
+
+  -- |
+  -- Determine @(line, column)@ from the original input and the remainder.
+  --
+  -- Counts line feed characters leading to the 'offset', so only use it
+  -- on your slow path. For example when describing parsing errors.
+  --
+  position :: Text -> Text -> (Int, Int)
+  position inp more = (succ line, succ column)
+    where
+      column = length lastLine
+      lastLine = takeWhileEnd ('\n' /=) leader
+      line = T.count "\n" leader
+      leader = dropEnd (length more) inp
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

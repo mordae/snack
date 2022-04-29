@@ -61,6 +61,9 @@ module Data.ByteString.Parser
   , endOfInput
   , atEnd
 
+    -- * Position
+  , offset
+
     -- * Miscelaneous
     -- |
     -- These are all generic methods, but since I sometimes forget about them,
@@ -438,6 +441,13 @@ where
   {-# INLINE atEnd #-}
   atEnd :: Parser Bool
   atEnd = Parser \inp -> Success (null inp) inp
+
+
+  -- |
+  -- Calculate offset from the original input and the remainder.
+  --
+  offset :: ByteString -> ByteString -> Int
+  offset inp more = length inp - length more
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
