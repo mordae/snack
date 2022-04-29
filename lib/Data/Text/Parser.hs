@@ -586,6 +586,9 @@ where
       leader = dropEnd (length more) inp
 
 
+  -- |
+  -- More precise 'Result' description produced by 'explain'.
+  --
   data Explanation
     = Explanation
       { exSource       :: String

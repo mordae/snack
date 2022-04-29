@@ -272,7 +272,8 @@ where
 
 
   -- |
-  -- Like 'takeWhile', but requires at least a single character.
+  -- Like 'Data.ByteString.Parser.Char8.takeWhile',
+  -- but requires at least a single character.
   --
   {-# INLINE CONLIKE takeWhile1 #-}
   takeWhile1 :: (Char -> Bool) -> Parser ByteString
@@ -375,6 +376,9 @@ where
       leader = dropEnd (length more) inp
 
 
+  -- |
+  -- More precise 'Result' description produced by 'explain'.
+  --
   data Explanation
     = Explanation
       { exSource       :: String
