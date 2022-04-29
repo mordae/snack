@@ -383,13 +383,10 @@ where
     = Explanation
       { exSource       :: String
         -- ^ Name of the source file.
-      , exPosition     :: (Int, Int)
-        -- ^ Line and column within the input.
-      , exLine         :: ByteString
-        -- ^ ByteString of the line in question.
-        --   Might contain tabs and other control characters.
-      , exExtent       :: (Int, Int)
-        -- ^ Extent of the problem within the above line.
+      , exSpanFrom     :: (Int, Int)
+        -- ^ Line and column where the problem starts.
+      , exSpanTo       :: (Int, Int)
+        -- ^ Line and column where the problem ends.
       , exMessage      :: String
         -- ^ A message associated with the problem.
       }
@@ -401,46 +398,33 @@ where
   --
   explain :: String -> ByteString -> Result a -> Explanation
   explain src inp (Success _ more) =
-    Explanation { exSource = src
-                , exPosition = (line, column)
-                , exLine = theLine
-                , exExtent = (column, column)
-                , exMessage = "Parsed successfully up to this point."
+    Explanation { exSource   = src
+                , exSpanFrom = pos
+                , exSpanTo   = pos
+                , exMessage  = "Parsed successfully up to this point."
                 }
       where
-        (line, column) = position inp more
-        theLine = wholeLine leader more
-        leader = dropEnd (length more) inp
+        pos = position inp more
 
 
   explain src inp (Failure expected more) =
-    Explanation { exSource = src
-                , exPosition = (line, column)
-                , exLine = theLine
-                , exExtent = (column, column)
-                , exMessage = "Expected " <> List.intercalate ", " expected
+    Explanation { exSource   = src
+                , exSpanFrom = pos
+                , exSpanTo   = pos
+                , exMessage  = "Expected " <> List.intercalate ", " expected
                 }
       where
-        (line, column) = position inp more
-        theLine = wholeLine leader more
-        leader = dropEnd (length more) inp
+        pos = position inp more
 
   explain src inp (Error reason more len) =
-    Explanation { exSource = src
-                , exPosition = (line, column)
-                , exLine = theLine
-                , exExtent = (column, column + len)
-                , exMessage = reason
+    Explanation { exSource   = src
+                , exSpanFrom = from
+                , exSpanTo   = to
+                , exMessage  = reason
                 }
       where
-        (line, column) = position inp more
-        theLine = wholeLine leader more
-        leader = dropEnd (length more) inp
-
-
-  wholeLine :: ByteString -> ByteString -> ByteString
-  wholeLine leader more =
-    takeWhileEnd (10 /=) leader <> BS.takeWhile (10 /=) more
+        from = position inp more
+        to   = position inp (BS.drop len more)
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:
