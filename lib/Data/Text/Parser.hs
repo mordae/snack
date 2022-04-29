@@ -73,6 +73,8 @@ module Data.Text.Parser
     -- * Position
   , offset
   , position
+  , explain
+  , Explanation(..)
 
     -- * Miscelaneous
     -- |
@@ -93,6 +95,7 @@ where
 
   import Data.Char
   import Data.Maybe
+  import Data.List qualified as List
 
   import Data.Text as T
   import Data.Text.Unsafe as T
@@ -113,7 +116,7 @@ where
   --
   data Result a
     = Success a {-# UNPACK #-} !Text
-      -- ^ Parser successfully match the input.
+      -- ^ Parser successfully matched the input.
       --   Produces the parsing result and the remainder of the input.
 
     | Failure [String] {-# UNPACK #-} !Text
@@ -581,6 +584,70 @@ where
       lastLine = takeWhileEnd ('\n' /=) leader
       line = T.count "\n" leader
       leader = dropEnd (length more) inp
+
+
+  data Explanation
+    = Explanation
+      { exSource       :: String
+        -- ^ Name of the source file.
+      , exPosition     :: (Int, Int)
+        -- ^ Line and column within the input.
+      , exLine         :: Text
+        -- ^ Text of the line in question.
+        --   Might contain tabs and other control characters.
+      , exExtent       :: (Int, Int)
+        -- ^ Extent of the problem within the above line.
+      , exMessage      :: String
+        -- ^ A message associated with the problem.
+      }
+    deriving (Eq, Show)
+
+
+  -- |
+  -- Process the result for showing it to the user.
+  --
+  explain :: String -> Text -> Result a -> Explanation
+  explain src inp (Success _ more) =
+    Explanation { exSource = src
+                , exPosition = (line, column)
+                , exLine = theLine
+                , exExtent = (column, column)
+                , exMessage = "Parsed successfully up to this point."
+                }
+      where
+        (line, column) = position inp more
+        theLine = wholeLine leader more
+        leader = dropEnd (length more) inp
+
+
+  explain src inp (Failure expected more) =
+    Explanation { exSource = src
+                , exPosition = (line, column)
+                , exLine = theLine
+                , exExtent = (column, column)
+                , exMessage = "Expected " <> List.intercalate ", " expected
+                }
+      where
+        (line, column) = position inp more
+        theLine = wholeLine leader more
+        leader = dropEnd (length more) inp
+
+  explain src inp (Error reason more len) =
+    Explanation { exSource = src
+                , exPosition = (line, column)
+                , exLine = theLine
+                , exExtent = (column, column + len)
+                , exMessage = reason
+                }
+      where
+        (line, column) = position inp more
+        theLine = wholeLine leader more
+        leader = dropEnd (length more) inp
+
+
+  wholeLine :: Text -> Text -> Text
+  wholeLine leader more =
+    takeWhileEnd ('\n' /=) leader <> T.takeWhile ('\n' /=) more
 
 
 -- vim:set ft=haskell sw=2 ts=2 et:

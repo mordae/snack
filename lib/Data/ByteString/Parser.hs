@@ -98,7 +98,7 @@ where
   --
   data Result a
     = Success a {-# UNPACK #-} !ByteString
-      -- ^ Parser successfully match the input.
+      -- ^ Parser successfully matched the input.
       --   Produces the parsing result and the remainder of the input.
 
     | Failure [String] {-# UNPACK #-} !ByteString
