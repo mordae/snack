@@ -326,7 +326,7 @@ where
         key <- SC.takeWhile1 isToken
         _   <- SC.skipSpace
         _   <- SC.skipSpace
-        '=' <- SC.char '='
+        _   <- SC.char '='
         _   <- SC.skipSpace
         _   <- SC.char '"'
         val <- SC.scan False scanString
@@ -341,7 +341,7 @@ where
         _   <- AC.skipSpace
         key <- AC.takeWhile1 isToken
         _   <- AC.skipSpace
-        '=' <- AC.char '='
+        _   <- AC.char '='
         _   <- AC.skipSpace
         _   <- AC.char '"'
         val <- AC.scan False scanString
@@ -357,7 +357,7 @@ where
         key <- ST.takeWhile1 isToken
         _   <- ST.skipSpace
         _   <- ST.skipSpace
-        '=' <- ST.char '='
+        _   <- ST.char '='
         _   <- ST.skipSpace
         _   <- ST.char '"'
         val <- ST.scan False scanString
@@ -372,7 +372,7 @@ where
         _   <- AT.skipSpace
         key <- AT.takeWhile1 isToken
         _   <- AT.skipSpace
-        '=' <- AT.char '='
+        _   <- AT.char '='
         _   <- AT.skipSpace
         _   <- AT.char '"'
         val <- AT.scan False scanString

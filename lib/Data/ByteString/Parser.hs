@@ -54,10 +54,13 @@ module Data.ByteString.Parser
   , wrap
   , match
   , label
-  , extent
+  , unlabel
+  , commit
+  , validate
 
     -- * End Of Input
   , takeByteString
+  , peekByteString
   , endOfInput
   , atEnd
 
@@ -83,6 +86,7 @@ where
 
   import Data.Maybe
   import Data.Word
+  import Data.List qualified as List
 
   import Data.ByteString as BS
   import Data.ByteString.Unsafe as BS
@@ -106,9 +110,7 @@ where
       --   Produces list of expected inputs and the corresponding remainder.
 
     | Error String {-# UNPACK #-} !ByteString {-# UNPACK #-} !Int
-      -- ^ 'fail' was called somewhere during the parsing.
-      --    Produces the reason and the remainder at the corresponding point
-      --    with length of the problematic extent.
+      -- ^ Parser run into an error. Either syntactic or a validation one.
 
     deriving (Eq, Show)
 
@@ -401,20 +403,53 @@ where
 
 
   -- |
-  -- Marks an unlabelel extent of the parser.
+  -- Un-names an extent of the parser.
   --
-  -- When the extent returns an Error, it is adjusted to cover the whole
-  -- extent, but the reason is left intact.
+  -- Same as 'label', but removes any expected values upon Failure.
+  -- Very useful to mark comments and optional whitespace with.
   --
-  {-# INLINE CONLIKE extent #-}
-  extent :: Parser a -> Parser a
-  extent par = Parser \inp ->
+  {-# INLINE CONLIKE unlabel #-}
+  unlabel :: Parser a -> Parser a
+  unlabel par = Parser \inp ->
     case runParser par inp of
       Success res more -> Success res more
-      Failure expected more -> Failure expected more
+      Failure _expected _more -> Failure [] inp
       Error reason more len ->
         let len' = len + (length inp - length more)
          in Error reason inp len'
+
+
+  -- |
+  -- Disable backtracking for the parser.
+  -- Failure is treated as an Error.
+  --
+  {-# INLINE CONLIKE commit #-}
+  commit :: Parser a -> Parser a
+  commit par = Parser \inp ->
+    case runParser par inp of
+      Success res more -> Success res more
+      Error reason more len -> Error reason more len
+      Failure expected more ->
+        Error
+          case expected of
+            [] -> "Unexpected input."
+            ex -> "Expected " <> List.intercalate ", " ex <> "."
+          more 0
+
+
+  -- |
+  -- Validate parser result and convert the result to Error upon failure.
+  --
+  {-# INLINE CONLIKE validate #-}
+  validate :: (a -> Either String b) -> Parser a -> Parser b
+  validate test par = Parser \inp ->
+    case runParser par inp of
+      Failure expected more -> Failure expected more
+      Error reason more len -> Error reason more len
+      Success res more ->
+        case test res of
+          Right res' -> Success res' more
+          Left reason -> Error reason inp (length inp - length more)
 
 
   -- |
@@ -423,6 +458,14 @@ where
   {-# INLINE takeByteString #-}
   takeByteString :: Parser ByteString
   takeByteString = Parser \inp -> Success inp mempty
+
+
+  -- |
+  -- Peek at whatever input remains.
+  --
+  {-# INLINE peekByteString #-}
+  peekByteString :: Parser ByteString
+  peekByteString = Parser \inp -> Success inp inp
 
 
   -- |

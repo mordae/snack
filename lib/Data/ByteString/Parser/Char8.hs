@@ -66,10 +66,13 @@ module Data.ByteString.Parser.Char8
   , wrap
   , match
   , label
-  , extent
+  , unlabel
+  , commit
+  , validate
 
     -- * End Of Input
   , takeByteString
+  , peekByteString
   , endOfInput
   , atEnd
 
@@ -107,9 +110,10 @@ where
   import Snack.Combinators
 
   import Data.ByteString.Parser ( Parser(..), Result(..), parseOnly
-                                , string, count, match, label, extent
-                                , takeByteString, endOfInput, atEnd
-                                , offset
+                                , string, count, match, label, unlabel, commit
+                                , validate
+                                , takeByteString, peekByteString
+                                , endOfInput, atEnd, offset
                                 )
 
   import Data.ByteString.Lex.Fractional qualified as LF
@@ -411,7 +415,10 @@ where
     Explanation { exSource   = src
                 , exSpanFrom = pos
                 , exSpanTo   = pos
-                , exMessage  = "Expected " <> List.intercalate ", " expected
+                , exMessage =
+                    case expected of
+                      [] -> "Unexpected input."
+                      ex -> "Expected " <> List.intercalate ", " ex <> "."
                 }
       where
         pos = position inp more
