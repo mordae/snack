@@ -392,7 +392,7 @@ where
       , exSpanTo       :: (Int, Int)
         -- ^ Line and column where the problem ends.
       , exMessage      :: String
-        -- ^ A message associated with the problem.
+        -- ^ Message associated with the problem.
       }
     deriving (Eq, Show)
 

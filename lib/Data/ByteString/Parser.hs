@@ -110,7 +110,7 @@ where
       --   Produces list of expected inputs and the corresponding remainder.
 
     | Error String {-# UNPACK #-} !ByteString {-# UNPACK #-} !Int
-      -- ^ Parser run into an error. Either syntactic or a validation one.
+      -- ^ Parser ran into an error. Either syntactic or a validation one.
 
     deriving (Eq, Show)
 
@@ -438,7 +438,7 @@ where
 
 
   -- |
-  -- Validate parser result and convert the result to Error upon failure.
+  -- Validate parser result and turn it into an Error upon failure.
   --
   {-# INLINE CONLIKE validate #-}
   validate :: (a -> Either String b) -> Parser a -> Parser b
