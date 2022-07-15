@@ -225,11 +225,15 @@ where
   -- @
   --
   {-# INLINE CONLIKE parseOnly #-}
-  parseOnly :: Parser a -> Text -> Maybe a
+  parseOnly :: Parser a -> Text -> Either String a
   parseOnly par = \inp ->
     case runParser par inp of
-      Success res _ -> Just res
-      _otherwise    -> Nothing
+      Success res _ -> Right res
+      Error reason _ _ -> Left reason
+      Failure expected _ ->
+        case expected of
+          [] -> Left $ "Unexpected input."
+          ex -> Left $ "Expected " <> List.intercalate ", " ex <> "."
 
 
   -- |
