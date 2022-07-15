@@ -1,12 +1,12 @@
 cabal-version:      3.0
 name:               snack
-version:            0.3.0.0
+version:            0.4.0.0
 license:            CC0-1.0
 license-file:       LICENSE
 copyright:          Jan Hamal Dvořák
 maintainer:         mordae@anilinux.org
 author:             Jan Hamal Dvořák
-tested-with:        ghc ==9.2.1 ghc ==9.0.2 ghc ==8.10.7
+tested-with:        ghc ==9.2.1
 homepage:           https://github.com/mordae/snack#readme
 bug-reports:        https://github.com/mordae/snack/issues
 synopsis:           Strict ByteString Parser Combinator

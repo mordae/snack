@@ -15,3 +15,8 @@
 [0.3.0.0]: https://github.com/mordae/snack/compare/0.2.0.0...0.3.0.0
 
 * Implemented functions to aid with error reporting.
+
+[0.4.0.0] -- July 2022
+[0.4.0.0]: https://github.com/mordae/snack/compare/0.3.0.0...0.4.0.0
+
+* Replaced `commit` with `branch` to deal with unwanted backtracking.
