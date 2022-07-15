@@ -96,13 +96,15 @@ where
       pSeparator = SC.char ',' <* SC.skipSpace
 
       pValue :: SC.Parser ByteString
-      pValue = pToken <|> pQuotedStr
+      pValue = SC.branch [ (SC.char '"', \_ -> pQuotedStr)
+                         , (   pure ' ', \_ -> pToken)
+                         ]
 
       pQuotedStr :: SC.Parser ByteString
-      pQuotedStr = SC.label "quoted string" $ pQuoted $ SC.takeWhile isStrChar
+      pQuotedStr = pString <* SC.char '"' <* SC.skipSpace
 
-      pQuoted :: SC.Parser a -> SC.Parser a
-      pQuoted p = SC.char '"' *> p <* SC.char '"' <* SC.skipSpace
+      pString :: SC.Parser ByteString
+      pString = SC.label "string" $ SC.takeWhile isStrChar
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -159,7 +161,7 @@ where
       pSeparator = AC.char ',' <* AC.skipSpace
 
       pValue :: AC.Parser ByteString
-      pValue = pToken <|> pQuotedStr
+      pValue = pQuotedStr <|> pToken
 
       pQuotedStr :: AC.Parser ByteString
       pQuotedStr = pQuoted $ AC.takeWhile isStrChar
@@ -221,13 +223,15 @@ where
       pSeparator = ST.char ',' <* ST.skipSpace
 
       pValue :: ST.Parser Text
-      pValue = pToken <|> pQuotedStr
+      pValue = ST.branch [ (ST.char '"', \_ -> pQuotedStr)
+                         , (   pure ' ', \_ -> pToken)
+                         ]
 
       pQuotedStr :: ST.Parser Text
-      pQuotedStr = pQuoted $ ST.takeWhile isStrChar
+      pQuotedStr = pString <* ST.char '"' <* ST.skipSpace
 
-      pQuoted :: ST.Parser a -> ST.Parser a
-      pQuoted p = ST.char '"' *> p <* ST.char '"' <* ST.skipSpace
+      pString :: ST.Parser Text
+      pString = ST.label "string" $ ST.takeWhile isStrChar
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -284,7 +288,7 @@ where
       pSeparator = AT.char ',' <* AT.skipSpace
 
       pValue :: AT.Parser Text
-      pValue = pToken <|> pQuotedStr
+      pValue = pQuotedStr <|> pToken
 
       pQuotedStr :: AT.Parser Text
       pQuotedStr = pQuoted $ AT.takeWhile isStrChar

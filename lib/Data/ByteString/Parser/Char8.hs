@@ -54,6 +54,7 @@ module Data.ByteString.Parser.Char8
     -- * Combinators
   , provided
   , choice
+  , branch
   , Data.ByteString.Parser.count
   , optional
   , eitherP
@@ -67,7 +68,6 @@ module Data.ByteString.Parser.Char8
   , match
   , label
   , unlabel
-  , commit
   , validate
 
     -- * End Of Input
@@ -110,8 +110,8 @@ where
   import Snack.Combinators
 
   import Data.ByteString.Parser ( Parser(..), Result(..), parseOnly
-                                , string, count, match, label, unlabel, commit
-                                , validate
+                                , string, count, match, label, unlabel
+                                , validate, branch
                                 , takeByteString, peekByteString
                                 , endOfInput, atEnd, offset
                                 )

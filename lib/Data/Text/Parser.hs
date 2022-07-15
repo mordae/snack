@@ -51,6 +51,7 @@ module Data.Text.Parser
     -- * Combinators
   , provided
   , choice
+  , branch
   , Snack.Combinators.count
   , optional
   , eitherP
@@ -64,7 +65,6 @@ module Data.Text.Parser
   , match
   , label
   , unlabel
-  , commit
   , validate
 
     -- * End Of Input
@@ -450,24 +450,6 @@ where
 
 
   -- |
-  -- Disable backtracking for the parser.
-  -- Failure is treated as an Error.
-  --
-  {-# INLINE CONLIKE commit #-}
-  commit :: Parser a -> Parser a
-  commit par = Parser \inp ->
-    case runParser par inp of
-      Success res more -> Success res more
-      Error reason more len -> Error reason more len
-      Failure expected more ->
-        Error
-          case expected of
-            [] -> "Unexpected input."
-            ex -> "Expected " <> List.intercalate ", " ex <> "."
-          more 0
-
-
-  -- |
   -- Validate parser result and turn it into an Error upon failure.
   --
   {-# INLINE CONLIKE validate #-}
@@ -480,6 +462,34 @@ where
         case test res of
           Right res' -> Success res' more
           Left reason -> Error reason inp (length inp - length more)
+
+
+  -- |
+  -- Given list of matchers and parsers, runs the first parser whose matcher
+  -- succeeds on the input. This pattern makes for a simpler alternative to
+  -- @try@ used in other parser combinator libraries.
+  --
+  -- Example:
+  --
+  -- @
+  -- pProperty = branch [ ( string "public" <* skipSpace
+  --                      , \_ -> Property Public <$> pToken
+  --                      )
+  --                    , ( string "private" <* skipSpace
+  --                      , \_ -> Property Private <$> pToken
+  --                      )
+  --                    ]
+  -- @
+  --
+  {-# INLINE CONLIKE branch #-}
+  branch :: [(Parser a, a -> Parser b)] -> Parser b
+  branch [] = Parser \inp -> Failure [] inp
+  branch ((Parser test, finish) : alts) =
+    Parser \inp ->
+      case test inp of
+        Success res more -> runParser (finish res) more
+        Error reason more len -> Error reason more len
+        Failure _expected _more -> runParser (branch alts) inp
 
 
   -- |

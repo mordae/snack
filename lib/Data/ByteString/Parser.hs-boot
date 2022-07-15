@@ -1,6 +1,7 @@
 module Data.ByteString.Parser
 where
   import Control.Applicative
+  import Control.Monad
   import Data.ByteString (ByteString)
 
   data Result a
@@ -19,3 +20,4 @@ where
   instance Applicative Parser
   instance Alternative Parser
   instance Monad Parser
+  instance MonadPlus Parser

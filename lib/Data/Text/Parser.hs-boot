@@ -1,6 +1,7 @@
 module Data.Text.Parser
 where
   import Control.Applicative
+  import Control.Monad
   import Data.Text (Text)
 
   data Result a
@@ -19,3 +20,4 @@ where
   instance Applicative Parser
   instance Alternative Parser
   instance Monad Parser
+  instance MonadPlus Parser
