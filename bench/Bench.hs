@@ -58,7 +58,7 @@ where
 
   {-# NOINLINE scMedia #-}
   scMedia :: ByteString -> Maybe [Media ByteString]
-  scMedia = SC.parseOnly (pMediaList <* SC.endOfInput)
+  scMedia = SC.parseOnly (SC.skipSpace *> pMediaList <* SC.endOfInput)
     where
       pMediaList :: SC.Parser [Media ByteString]
       pMediaList = pMedia `SC.sepBy` pSeparator
@@ -76,38 +76,33 @@ where
 
       pParameter :: SC.Parser (ByteString, ByteString)
       pParameter = do
-        _     <- SC.takeWhile SC.isSpace
-        _     <- SC.char ';'
+        _     <- SC.char ';' <* SC.skipSpace
         name  <- pToken
-        _     <- SC.char '='
+        _     <- SC.char '=' <* SC.skipSpace
         value <- pValue
         return (name, value)
 
       pQuality :: SC.Parser Float
       pQuality = do
-        _ <- SC.takeWhile SC.isSpace
-        _ <- SC.char ';'
-        _ <- pSpaced $ SC.char 'q'
-        _ <- SC.char '='
+        _ <- SC.char ';' <* SC.skipSpace
+        _ <- SC.char 'q' <* SC.skipSpace
+        _ <- SC.char '=' <* SC.skipSpace
         SC.fractional
 
       pToken :: SC.Parser ByteString
-      pToken = pSpaced $ SC.label "token" $ SC.takeTill1 isSpecial
+      pToken = SC.label "token" $ SC.takeTill1 isSpecial <* SC.skipSpace
 
       pSeparator :: SC.Parser Char
-      pSeparator = pSpaced $ SC.char ','
+      pSeparator = SC.char ',' <* SC.skipSpace
 
       pValue :: SC.Parser ByteString
       pValue = pToken <|> pQuotedStr
 
       pQuotedStr :: SC.Parser ByteString
-      pQuotedStr = pSpaced $ SC.label "quoted string" $ pQuoted $ SC.takeWhile isStrChar
-
-      pSpaced :: SC.Parser a -> SC.Parser a
-      pSpaced p = p `SC.wrap` SC.takeWhile SC.isSpace
+      pQuotedStr = SC.label "quoted string" $ pQuoted $ SC.takeWhile isStrChar
 
       pQuoted :: SC.Parser a -> SC.Parser a
-      pQuoted p = SC.char '"' *> p <* SC.char '"'
+      pQuoted p = SC.char '"' *> p <* SC.char '"' <* SC.skipSpace
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -126,7 +121,7 @@ where
 
   {-# NOINLINE acMedia #-}
   acMedia :: ByteString -> Either String [Media ByteString]
-  acMedia = AC.parseOnly (pMediaList <* AC.endOfInput)
+  acMedia = AC.parseOnly (AC.skipSpace *> pMediaList <* AC.endOfInput)
     where
       pMediaList :: AC.Parser [Media ByteString]
       pMediaList = pMedia `AC.sepBy` pSeparator
@@ -144,38 +139,33 @@ where
 
       pParameter :: AC.Parser (ByteString, ByteString)
       pParameter = do
-        _     <- AC.skipSpace
-        _     <- AC.char ';'
+        _     <- AC.char ';' <* AC.skipSpace
         name  <- pToken
-        _     <- AC.char '='
+        _     <- AC.char '=' <* AC.skipSpace
         value <- pValue
         return (name, value)
 
       pQuality :: AC.Parser Float
       pQuality = do
-        _ <- AC.skipSpace
-        _ <- AC.char ';'
-        _ <- pSpaced $ AC.char 'q'
-        _ <- AC.char '='
+        _ <- AC.char ';' <* AC.skipSpace
+        _ <- AC.char 'q' <* AC.skipSpace
+        _ <- AC.char '=' <* AC.skipSpace
         AC.rational
 
       pToken :: AC.Parser ByteString
-      pToken = pSpaced $ AC.takeTill isSpecial
+      pToken = AC.takeTill isSpecial <* AC.skipSpace
 
       pSeparator :: AC.Parser Char
-      pSeparator = pSpaced $ AC.char ','
+      pSeparator = AC.char ',' <* AC.skipSpace
 
       pValue :: AC.Parser ByteString
       pValue = pToken <|> pQuotedStr
 
       pQuotedStr :: AC.Parser ByteString
-      pQuotedStr = pSpaced $ pQuoted $ AC.takeWhile isStrChar
-
-      pSpaced :: AC.Parser a -> AC.Parser a
-      pSpaced p = AC.skipSpace *> p <* AC.skipSpace
+      pQuotedStr = pQuoted $ AC.takeWhile isStrChar
 
       pQuoted :: AC.Parser a -> AC.Parser a
-      pQuoted p = AC.char '"' *> p <* AC.char '"'
+      pQuoted p = AC.char '"' *> p <* AC.char '"' <* AC.skipSpace
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -193,7 +183,7 @@ where
 
   {-# NOINLINE stMedia #-}
   stMedia :: Text -> Maybe [Media Text]
-  stMedia = ST.parseOnly (pMediaList <* ST.endOfInput)
+  stMedia = ST.parseOnly (ST.skipSpace *> pMediaList <* ST.endOfInput)
     where
       pMediaList :: ST.Parser [Media Text]
       pMediaList = pMedia `ST.sepBy` pSeparator
@@ -211,38 +201,33 @@ where
 
       pParameter :: ST.Parser (Text, Text)
       pParameter = do
-        _     <- ST.takeWhile ST.isSpace
-        _     <- ST.char ';'
+        _     <- ST.char ';' <* ST.skipSpace
         name  <- pToken
-        _     <- ST.char '='
+        _     <- ST.char '=' <* ST.skipSpace
         value <- pValue
         return (name, value)
 
       pQuality :: ST.Parser Float
       pQuality = do
-        _ <- ST.takeWhile ST.isSpace
-        _ <- ST.char ';'
-        _ <- pSpaced $ ST.char 'q'
-        _ <- ST.char '='
+        _ <- ST.char ';' <* ST.skipSpace
+        _ <- ST.char 'q' <* ST.skipSpace
+        _ <- ST.char '=' <* ST.skipSpace
         ST.fractional
 
       pToken :: ST.Parser Text
-      pToken = pSpaced $ ST.takeTill1 isSpecial
+      pToken = ST.takeTill1 isSpecial <* ST.skipSpace
 
       pSeparator :: ST.Parser Char
-      pSeparator = pSpaced $ ST.char ','
+      pSeparator = ST.char ',' <* ST.skipSpace
 
       pValue :: ST.Parser Text
       pValue = pToken <|> pQuotedStr
 
       pQuotedStr :: ST.Parser Text
-      pQuotedStr = pSpaced $ pQuoted $ ST.takeWhile isStrChar
-
-      pSpaced :: ST.Parser a -> ST.Parser a
-      pSpaced p = p `ST.wrap` ST.takeWhile ST.isSpace
+      pQuotedStr = pQuoted $ ST.takeWhile isStrChar
 
       pQuoted :: ST.Parser a -> ST.Parser a
-      pQuoted p = ST.char '"' *> p <* ST.char '"'
+      pQuoted p = ST.char '"' *> p <* ST.char '"' <* ST.skipSpace
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -261,7 +246,7 @@ where
 
   {-# NOINLINE atMedia #-}
   atMedia :: Text -> Either String [Media Text]
-  atMedia = AT.parseOnly (pMediaList <* AT.endOfInput)
+  atMedia = AT.parseOnly (AT.skipSpace *> pMediaList <* AT.endOfInput)
     where
       pMediaList :: AT.Parser [Media Text]
       pMediaList = pMedia `AT.sepBy` pSeparator
@@ -279,38 +264,33 @@ where
 
       pParameter :: AT.Parser (Text, Text)
       pParameter = do
-        _     <- AT.skipSpace
-        _     <- AT.char ';'
+        _     <- AT.char ';' <* AT.skipSpace
         name  <- pToken
-        _     <- AT.char '='
+        _     <- AT.char '=' <* AT.skipSpace
         value <- pValue
         return (name, value)
 
       pQuality :: AT.Parser Float
       pQuality = do
-        _ <- AT.skipSpace
-        _ <- AT.char ';'
-        _ <- pSpaced $ AT.char 'q'
-        _ <- AT.char '='
+        _ <- AT.char ';' <* AT.skipSpace
+        _ <- AT.char 'q' <* AT.skipSpace
+        _ <- AT.char '=' <* AT.skipSpace
         AT.rational
 
       pToken :: AT.Parser Text
-      pToken = pSpaced $ AT.takeTill isSpecial
+      pToken = AT.takeTill isSpecial <* AT.skipSpace
 
       pSeparator :: AT.Parser Char
-      pSeparator = pSpaced $ AT.char ','
+      pSeparator = AT.char ',' <* AT.skipSpace
 
       pValue :: AT.Parser Text
       pValue = pToken <|> pQuotedStr
 
       pQuotedStr :: AT.Parser Text
-      pQuotedStr = pSpaced $ pQuoted $ AT.takeWhile isStrChar
-
-      pSpaced :: AT.Parser a -> AT.Parser a
-      pSpaced p = AT.skipSpace *> p <* AT.skipSpace
+      pQuotedStr = pQuoted $ AT.takeWhile isStrChar
 
       pQuoted :: AT.Parser a -> AT.Parser a
-      pQuoted p = AT.char '"' *> p <* AT.char '"'
+      pQuoted p = AT.char '"' *> p <* AT.char '"' <* AT.skipSpace
 
       isStrChar :: (Char -> Bool)
       isStrChar c = c /= '\\' && c /= '"'
@@ -332,7 +312,6 @@ where
       pKeyValue = do
         _   <- SC.skipSpace
         key <- SC.takeWhile1 isToken
-        _   <- SC.skipSpace
         _   <- SC.skipSpace
         _   <- SC.char '='
         _   <- SC.skipSpace
@@ -363,7 +342,6 @@ where
       pKeyValue = do
         _   <- ST.skipSpace
         key <- ST.takeWhile1 isToken
-        _   <- ST.skipSpace
         _   <- ST.skipSpace
         _   <- ST.char '='
         _   <- ST.skipSpace
