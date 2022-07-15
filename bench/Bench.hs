@@ -60,8 +60,10 @@ where
   scMedia :: ByteString -> Maybe [Media ByteString]
   scMedia = SC.parseOnly (pMediaList <* SC.endOfInput)
     where
-      pMedia :: SC.Parser (Media ByteString)
+      pMediaList :: SC.Parser [Media ByteString]
       pMediaList = pMedia `SC.sepBy` pSeparator
+
+      pMedia :: SC.Parser (Media ByteString)
       pMedia = do
         mainType <- pToken
         subType  <- (SC.char '/' *> pToken) <|> pure ""
@@ -126,8 +128,10 @@ where
   acMedia :: ByteString -> Either String [Media ByteString]
   acMedia = AC.parseOnly (pMediaList <* AC.endOfInput)
     where
-      pMedia :: AC.Parser (Media ByteString)
+      pMediaList :: AC.Parser [Media ByteString]
       pMediaList = pMedia `AC.sepBy` pSeparator
+
+      pMedia :: AC.Parser (Media ByteString)
       pMedia = do
         mainType <- pToken
         subType  <- (AC.char '/' *> pToken) <|> pure ""
@@ -191,8 +195,10 @@ where
   stMedia :: Text -> Maybe [Media Text]
   stMedia = ST.parseOnly (pMediaList <* ST.endOfInput)
     where
-      pMedia :: ST.Parser (Media Text)
+      pMediaList :: ST.Parser [Media Text]
       pMediaList = pMedia `ST.sepBy` pSeparator
+
+      pMedia :: ST.Parser (Media Text)
       pMedia = do
         mainType <- pToken
         subType  <- (ST.char '/' *> pToken) <|> pure ""
@@ -257,8 +263,10 @@ where
   atMedia :: Text -> Either String [Media Text]
   atMedia = AT.parseOnly (pMediaList <* AT.endOfInput)
     where
-      pMedia :: AT.Parser (Media Text)
+      pMediaList :: AT.Parser [Media Text]
       pMediaList = pMedia `AT.sepBy` pSeparator
+
+      pMedia :: AT.Parser (Media Text)
       pMedia = do
         mainType <- pToken
         subType  <- (AT.char '/' *> pToken) <|> pure ""
